@@ -35,25 +35,37 @@ name_input = {
 
 # Output:
 name_output = {
-    "task_id": "1",
+    "task_id": "2",
     "run_success": True,  # False if runtime error occurs
     "not_finished": ["id2"],  # images that were not processed due to timeout or errors
     "msg": "not finished",  # description for debugging or status information
 }
 
-# ---------- zip ----------
+# ---------- download zip ----------
 #input:
-zip_input = {
+download_input = {
     "task_id":"3",
-    "images":{
-        "id1": "name1",
-        "id2": "name2",
-    }
+    "images": ["id1", "id2"]
 }
 # Output:
-name_output = {
-    "task_id": "1",
+download_output = {
+    "task_id": "3",
     "run_success": True,  # False if runtime error occurs like too much files to zip
     "zip_link": '<s3 link for zip file>',  # backend needs remember to delete
+    "msg": "finished",  # description for debugging or status information
+}
+
+# ---------- upload zip ----------
+#input:
+upload_input = {
+    "task_id":"4",
+    "zip_link": '<s3 link for zip file>',
+    "user_id":'id1'
+}
+# Output:
+upload_output = {
+    "task_id": "4",
+    "run_success": True,  # False if runtime error occurs like too much files to zip
+    "images": ["id1", "id2"],
     "msg": "finished",  # description for debugging or status information
 }
