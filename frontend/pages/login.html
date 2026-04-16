@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Cloud Album</title>
+    <link rel="stylesheet" href="../assets/css/auth.css">
+</head>
+
+<body>
+    <div class="auth-container">
+        <h2>AI Cloud Album</h2>
+
+        <!--Account Login-->
+        <div class="form-box" id="loginBox">
+            <h3>Login</h3>
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="userpassword" placeholder="Password" required>
+            <button onclick="login()">Login</button>
+            <a href="javascript:switchToRegister()">Register</a>
+        </div>
+
+        <!--Register Account-->
+        <div class="form-box hidden" id="registerBox">
+            <h3>Register</h3>
+            <input type="text" id="reg_username" placeholder="Enter Username" required>
+            <input type="password" id="reg_userpassword" placeholder="Enter Password" required>
+            <button onclick="register()">Register</button>
+            <a href="javascript:switchToLogin()">Login</a>
+        </div>
+
+        <div id="msg" class="message"></div>
+    </div>
+
+    <script src="../assets/js/auth.js"></script>
+</body>
+</html>
