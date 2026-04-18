@@ -1,0 +1,83 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background: #f5f7fa;
+}
+
+/* ====================== 顶部布局（严格按你截图） ====================== */
+.top-bar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 12px 20px;
+    background: #ffffff;
+    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    gap: 20px;
+}
+
+/* 黄色区域：标题 */
+.title-section {
+    flex: 1;
+}
+.title-section h1 {
+    font-size: 24px;
+    color: #333;
+}
+
+/* 粉色区域：按钮组 */
+.btn-section {
+    display: flex;
+    gap: 10px;
+}
+.top-btn {
+    padding: 8px 14px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.top-btn:hover {
+    background: #0056b3;
+}
+
+/* 绿色区域：缩小搜索框 */
+.search-section {
+    width: 280px;
+}
+#searchInput {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+/* ====================== 相册布局 ====================== */
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 16px;
+}
+.album {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+.photo-item {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+}
+.photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}

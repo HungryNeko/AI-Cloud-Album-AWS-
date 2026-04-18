@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>AI Cloud Album</title>
+    <link rel="stylesheet" href="../static/css/main.css">
+</head>
+
+<body>
+    <div class="top-bar">
+        <!-- Title-->
+        <div class="title-section">
+            <h1>AI Album</h1>
+        </div>
+
+        <!-- Navigate Buttons -->
+        <div class="btn-section">
+            <button class="top-btn" onclick="goHome()">Main</button>
+            <button class="top-btn" onclick="goUpload()">Upload</button>
+            <button class="top-btn" onclick="goDownload()">Download</button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-section">
+            <input type="text" id="searchInput" placeholder="Search photo name..." oninput="searchPhotos()">
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="album" id="album">
+            <!-- show images here -->
+        </div>
+    </div>
+
+    <script src="../static/js/main.js"></script>
+</body>
+</html>
