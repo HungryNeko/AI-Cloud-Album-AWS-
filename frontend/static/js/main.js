@@ -18,7 +18,7 @@ const photos = [
     }
 ];
 
-// 检查登录
+// Login check
 window.onload = () => {
     if (!localStorage.getItem("token")) {
         location.href = "../pages/index.html";
@@ -26,7 +26,7 @@ window.onload = () => {
     renderPhotos(photos);
 };
 
-// 渲染相册
+// Albums
 function renderPhotos(list) {
     const album = document.getElementById("album");
     album.innerHTML = "";
@@ -39,26 +39,26 @@ function renderPhotos(list) {
     });
 }
 
-// 打开详情页
+// Details
 function openDetail(id) {
     localStorage.setItem("currentPhotoId", id);
     window.open("detail.html", "_blank");
 }
 
-// 搜索
+// serach
 function searchPhotos() {
     const key = document.getElementById("searchInput").value.toLowerCase();
     const filtered = photos.filter(p => p.name.toLowerCase().includes(key));
     renderPhotos(filtered);
 }
 
-// 回到主页
+// Main page
 function goHome() {
     document.getElementById("searchInput").value = "";
     renderPhotos(photos);
 }
 
-// 登出
+// Logout
 function logout() {
     localStorage.removeItem("token");
     location.href = "../pages/login.html";

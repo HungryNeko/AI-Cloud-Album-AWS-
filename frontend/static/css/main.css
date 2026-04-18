@@ -9,47 +9,80 @@ body {
     background: #f5f7fa;
 }
 
-/* ====================== 顶部布局（严格按你截图） ====================== */
-.top-bar {
+.layout-container {
     display: flex;
-    align-items: center;
-    width: 100%;
-    padding: 12px 20px;
-    background: #ffffff;
-    box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    gap: 20px;
+    height: 100vh;
 }
 
-/* 黄色区域：标题 */
-.title-section {
-    flex: 1;
+.sidebar {
+    width: 200px;
+    background: #ffffff;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
 }
-.title-section h1 {
-    font-size: 24px;
+
+.sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.sidebar-header h2 {
+    font-size: 20px;
     color: #333;
 }
 
-/* 粉色区域：按钮组 */
-.btn-section {
-    display: flex;
-    gap: 10px;
-}
-.top-btn {
-    padding: 8px 14px;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
-.top-btn:hover {
-    background: #0056b3;
+.sidebar-nav {
+    padding: 10px 0;
 }
 
-/* 绿色区域：缩小搜索框 */
-.search-section {
-    width: 280px;
+.nav-item {
+    width: 100%;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    background: none;
+    color: #666;
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
 }
+
+.nav-item:hover {
+    background: #f0f5ff;
+    color: #007bff;
+}
+
+.nav-item.active {
+    background: #e6f0ff;
+    color: #007bff;
+    border-right: 3px solid #007bff;
+}
+
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+.top-header {
+    padding: 15px 20px;
+    background: #ffffff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.search-container {
+    width: 300px;
+}
+
 #searchInput {
     width: 100%;
     padding: 8px 12px;
@@ -58,17 +91,27 @@ body {
     font-size: 14px;
 }
 
-/* ====================== 相册布局 ====================== */
+.logout-btn {
+    padding: 8px 16px;
+    background: #ff4d4f;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
 .container {
     max-width: 1200px;
-    margin: 20px auto;
+    margin: 20px 0;
     padding: 0 16px;
 }
+
 .album {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 16px;
 }
+
 .photo-item {
     aspect-ratio: 1;
     border-radius: 8px;
@@ -76,6 +119,7 @@ body {
     box-shadow: 0 0 4px rgba(0,0,0,0.1);
     cursor: pointer;
 }
+
 .photo-item img {
     width: 100%;
     height: 100%;

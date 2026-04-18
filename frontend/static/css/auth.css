@@ -61,7 +61,7 @@ button:hover {
 }
 
 .message {
-    color: red;
+    color: rgb(0, 255, 76);
     margin-top: 10px;
     height: 20px;
 }
