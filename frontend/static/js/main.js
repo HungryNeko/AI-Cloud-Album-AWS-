@@ -1,4 +1,4 @@
-// 模拟图片数据
+// Test data
 const photos = [
     {
         id: 1,
@@ -23,6 +23,12 @@ window.onload = () => {
     if (!localStorage.getItem("token")) {
         location.href = "../pages/index.html";
     }
+
+    const username = localStorage.getItem("username");
+    if(!username) username = "User";
+    var node = document.getElementById("userName")
+    node.textContent = "Hello, " + username
+    
     renderPhotos(photos);
 };
 
@@ -42,12 +48,13 @@ function renderPhotos(list) {
 // Details
 function openDetail(id) {
     localStorage.setItem("currentPhotoId", id);
-    window.open("detail.html", "_blank");
+    window.location.href ="detail.html";
 }
 
 // serach
 function searchPhotos() {
     const key = document.getElementById("searchInput").value.toLowerCase();
+    // Needs to replace this! Search by location, name, or label.
     const filtered = photos.filter(p => p.name.toLowerCase().includes(key));
     renderPhotos(filtered);
 }
@@ -71,5 +78,5 @@ function goUpload() {
     location.href = "upload.html";
 }
 function goDownload() {
-    alert("Download module");
+    location.href = "download.html"
 }

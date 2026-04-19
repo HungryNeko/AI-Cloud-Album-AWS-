@@ -2,53 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>AI Cloud Album</title>
+    <title>Upload Image</title>
+    <link rel="stylesheet" href="../static/css/upload.css">
     <link rel="stylesheet" href="../static/css/main.css">
 </head>
 
 <body>
-        <div class="layout-container">
-        <!-- Navigation -->
+    <div class="layout-container">
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h2>AI Album</h2>
             </div>
             <nav class="sidebar-nav">
-                <button class="nav-item active" onclick="goHome()">
-                    <i class="fa fa-home"></i>
+                <button class="nav-item" onclick="goHome()">
+                    <i class="fa-home"></i>
                     <span>HOME</span>
                 </button>
-                <button class="nav-item" onclick="goUpload()">
-                    <i class="fa fa-upload"></i>
+                <button class="nav-item active" onclick="goUpload()">
+                    <i class="fa-upload"></i>
                     <span>UPLOAD</span>
                 </button>
                 <button class="nav-item" onclick="goDownload()">
-                    <i class="fa fa-download"></i>
+                    <i class="fa-download"></i>
                     <span>DOWNLOAD</span>
                 </button>
             </nav>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <!-- Search Bar -->
             <header class="top-header" style="height: 62px;">
-                <div class="search-container">
-                    <input type="text" id="searchInput" placeholder="Search photo ..." oninput="searchPhotos()">
-                </div>
                 <div class="user-area">
                     <span id="userName" style="margin-right: 16px; font-size: 15px; color: #333;"></span>
                     <button class="logout-btn" onclick="logout()">Logout</button>
                 </div>
             </header>
 
-            <!-- Album -->
-            <div class="container">
-                <div class="album" id="album"></div>
+            <div class="upload-wrapper">
+                <div class="upload-dropzone" id="dropzone">
+                    <p>Upload your photo here ...</p>
+                    <input type="file" id="fileInput" multiple accept="image/*">
+                </div>
+                <div class="upload-queue">
+                    <h3>Upload List</h3>
+                    <div id="fileQueue"></div>
+                </div>
             </div>
+            <button class="upload-btn" onclick="startUpload()">Upload</button>
         </main>
     </div>
 
-    <script src="../static/js/main.js"></script>
+    <script src="../static/js/upload.js"></script>
 </body>
 </html>
