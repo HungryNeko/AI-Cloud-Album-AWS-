@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Image Detail</title>
+    <link rel="stylesheet" href="../static/css/main.css">
+    <link rel="stylesheet" href="../static/css/detail.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+
+<body>
+    <div class="layout-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>AI Album</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item" onclick="goHome()">
+                    <i class="fa-home"></i>
+                    <span>HOME</span>
+                </button>
+                <button class="nav-item" onclick="goUpload()">
+                    <i class="fa-upload"></i>
+                    <span>UPLOAD</span>
+                </button>
+                <button class="nav-item" onclick="goDownload()">
+                    <i class="fa-download"></i>
+                    <span>DOWNLOAD</span>
+                </button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header" style="height: 62px;">
+                <div class="user-area">
+                    <span id="userName" style="margin-right: 16px; font-size: 15px; color: #333;"></span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="detail-body">
+                <div class="big-image-box">
+                    <img id="bigImg" class="big-img" alt="Detail">
+                </div>
+                <div class="bottom-section">
+                    <div class="followup-box">
+                        <p id="promptText" class="prompt-text"></p>
+                        <input type="text" id="nameInput" class="name-input" placeholder="Enter Name Here">
+                        <button class="save-btn" onclick="saveName()">Save</button> 
+                    </div>
+                    <div class="map-box">
+                        <div id="map" class="map">
+                            
+                        </div>
+                        <p id="locationText" class="location-info"></p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="../static/js/detail.js"></script>
+</body>
+</html>

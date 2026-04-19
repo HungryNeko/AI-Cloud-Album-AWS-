@@ -36,6 +36,7 @@ h2 {
 }
 
 input {
+    margin-top: 20px;
     width: 100%;
     padding: 10px;
     margin: 8px 0;
@@ -44,14 +45,15 @@ input {
 }
 
 button {
-    width: 100%;
+    margin-top: 20px;
+    width: 85%;
     padding: 10px;
     background: #007bff;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 20px;
     cursor: pointer;
-    margin-top: 10px;
+    margin-bottom: 10px;
 }
 
 button:hover {
@@ -59,7 +61,7 @@ button:hover {
 }
 
 .message {
-    color: red;
+    color: rgb(0, 255, 76);
     margin-top: 10px;
     height: 20px;
 }

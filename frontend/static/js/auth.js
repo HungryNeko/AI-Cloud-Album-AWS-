@@ -62,6 +62,7 @@ async function login() {
 
         // save JWT
         saveToken(data.token);
+        localStorage.setItem("username", username)
         showMsg("Login success!");
         setTimeout(() => location.href = "index.html", 1000);
     } catch (err) {

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Upload Image</title>
+    <link rel="stylesheet" href="../static/css/download.css">
+    <link rel="stylesheet" href="../static/css/main.css">
+</head>
+
+<body>
+    <div class="layout-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>AI Album</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item" onclick="goHome()">
+                    <i class="fa-home"></i>
+                    <span>HOME</span>
+                </button>
+                <button class="nav-item" onclick="goUpload()">
+                    <i class="fa-upload"></i>
+                    <span>UPLOAD</span>
+                </button>
+                <button class="nav-item active" onclick="goDownload()">
+                    <i class="fa-download"></i>
+                    <span>DOWNLOAD</span>
+                </button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header" style="height: 62px;">
+                <div class="user-area">
+                    <span id="userName" style="margin-right: 16px; font-size: 15px; color: #333;"></span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </header>
+            <div class="download-wrapper">
+                <div class="image-grid" id="imageGrid">
+
+                </div>
+                <button class="download-btn" onclick="BatchDownload()">Download</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="../static/js/download.js"></script>
+</body>
+</html>
