@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from utils.jwt_utils import generate_token
-from services.db_service import create_user, verify_user
+from services.db_service import create_user, verify_user, get_user_by_email
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -14,6 +14,9 @@ def register():
         return {"success": False, "message": "email and password required"}, 400
 
     user = create_user(email, password)
+    if not user:
+        return {"success": False, "message": "account already exists"}, 409
+
     token = generate_token(user["user_id"])
 
     return {

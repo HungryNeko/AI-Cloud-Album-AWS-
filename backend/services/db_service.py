@@ -2,6 +2,7 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from services.aws_clients import dynamodb_resource
 from flask import current_app
+from botocore.exceptions import ClientError
 
 def _user_table():
     return dynamodb_resource().Table(current_app.config["DYNAMODB_USER_TABLE"])
@@ -18,16 +19,21 @@ def create_user(email: str, password: str):
         "password_hash": generate_password_hash(password),
         "created_at": datetime.utcnow().isoformat()
     }
-    _user_table().put_item(Item=item)
-    return item
+    try:
+        _user_table().put_item(
+            Item=item,
+            ConditionExpression="attribute_not_exists(user_id)"
+        )
+        return item
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return None
+        raise
 
 def get_user_by_email(email: str):
-    resp = _user_table().scan(
-        FilterExpression="email = :e",
-        ExpressionAttributeValues={":e": email}
-    )
-    items = resp.get("Items", [])
-    return items[0] if items else None
+    resp = _user_table().get_item(Key={"user_id": email})
+    item = resp.get("Item", [])
+    return item
 
 def verify_user(email: str, password: str):
     user = get_user_by_email(email)
