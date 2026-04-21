@@ -15,7 +15,21 @@ output:
 }
 """
 import json
+import os
+from datetime import datetime
+from pathlib import Path
 from uuid import uuid4
+
+import boto3
+
+TIME_GUARD_SECONDS = int(os.getenv("LAMBDA_TIME_GUARD_SECONDS", "30"))
+
+
+def _image_table():
+    region = os.getenv("AWS_REGION", "us-west-1")
+    table_name = os.getenv("DYNAMODB_IMAGE_TABLE", "ImageMetadata")
+    session = boto3.Session(region_name=region)
+    return session.resource("dynamodb").Table(table_name)
 
 
 class handler:
@@ -51,7 +65,7 @@ class handler:
             self.msg = "Error when loading msg: " + str(e)
             self.run_success = False
 
-    def has_enough_time(self, threshold_seconds=60) -> bool:
+    def has_enough_time(self, threshold_seconds=TIME_GUARD_SECONDS) -> bool:
         if self.context is None or not hasattr(self.context, "get_remaining_time_in_millis"):
             self.msg = "Error when loading lambda context: get_remaining_time_in_millis not found"
             self.run_success = False
@@ -83,8 +97,31 @@ class handler:
 
     def write_database(self, image_id: str, image_file) -> bool:
         try:
-            pass
-            # TODO: write image_id, user_id, and S3 info to database.
+            raw_name = ""
+            if hasattr(image_file, "name"):
+                raw_name = str(getattr(image_file, "name", "") or "")
+            elif isinstance(image_file, (str, Path)):
+                raw_name = str(image_file)
+            safe_name = os.path.basename(raw_name).replace("/", "_").replace("\\", "_")
+            if not safe_name:
+                safe_name = image_id
+            s3_key = f"{self.user_id}/{image_id}/{safe_name}"
+            now = datetime.utcnow().isoformat()
+            _image_table().put_item(
+                Item={
+                    "user_id": self.user_id,
+                    "image_id": image_id,
+                    "s3_key": s3_key,
+                    "status": "uploaded",
+                    "label": None,
+                    "confidence": None,
+                    "location": None,
+                    "followup_questions": [],
+                    "followup_answers": [],
+                    "created_at": now,
+                    "updated_at": now,
+                }
+            )
             return True
         except Exception as e:
             self.msg = "Error when writing to database: " + str(e)
@@ -92,6 +129,10 @@ class handler:
             return False
 
     def process(self) -> None:
+        if not self.has_enough_time():
+            self.msg = "Error when processing: not enough remaining time"
+            self.run_success = False
+            return
         self.images = []
         self.files = self.load_zip()
         if not self.run_success:
@@ -103,12 +144,20 @@ class handler:
 
         for image_file in self.files:
             if not self.has_enough_time():
-                self.msg = "not finished"
+                self.msg = "Error when processing: not enough remaining time"
                 self.run_success = False
                 return
 
             image_id = str(uuid4())
+            if not self.has_enough_time():
+                self.msg = "Error when processing: not enough remaining time"
+                self.run_success = False
+                return
             if not self.write_s3(image_id, image_file):
+                return
+            if not self.has_enough_time():
+                self.msg = "Error when processing: not enough remaining time"
+                self.run_success = False
                 return
             if not self.write_database(image_id, image_file):
                 return
