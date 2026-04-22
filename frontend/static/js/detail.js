@@ -1,7 +1,7 @@
-const photos = [
-    { id:1, url:"https://picsum.photos/seed/cat1/600/600", label:"cat", name:"", lat:37.7749, lng:-122.4194 },
-    { id:2, url:"https://picsum.photos/seed/dog1/600/600", label:"berry", name:"", lat:37.7749, lng:-122.4194 }
-];
+// const photos = [
+//     { id:1, url:"https://picsum.photos/seed/cat1/600/600", label:"cat", name:"", lat:37.7749, lng:-122.4194 },
+//     { id:2, url:"https://picsum.photos/seed/dog1/600/600", label:"berry", name:"", lat:37.7749, lng:-122.4194 }
+// ];
 
 async function getLocation(lat, lng) {
   try {
@@ -20,14 +20,16 @@ async function getLocation(lat, lng) {
   }
 }
 
-window.onload = () => {
+window.onload = async function() {
     if (!localStorage.getItem("token")) {
         location.href = "pages/login.html";
     }
     const username = localStorage.getItem("username") || "User";
     document.getElementById("userName").innerText = `Hello, ${username}`;
-    const id = Number(localStorage.getItem("currentPhotoId"));
-    const photo = photos.find(p => p.id === id);
+    // const id = Number(localStorage.getItem("currentPhotoId"));
+    // const photo = photos.find(p => p.id === id);
+    let photoId = localStorage.getItem("currentPhotoId");
+    let photo = await DataService.getPhoto(photoId);
     if (!photo) {
         alert("Image don't exist");
         location.href = "index.html";
@@ -76,6 +78,7 @@ function goDownload() {
 function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
+    localStorage.removeItem("photos");
     location.href = "pages/login.html";
 }
 

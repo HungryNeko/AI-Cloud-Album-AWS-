@@ -132,3 +132,31 @@ body {
     height: 100%;
     object-fit: cover;
 }
+
+.del-bar {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.del-btn {
+    padding: 10px;
+    width: 30%;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+.delmode-btn {
+    padding: 10px;
+    align-self: center;
+    width: 50%;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 14px;
+}
