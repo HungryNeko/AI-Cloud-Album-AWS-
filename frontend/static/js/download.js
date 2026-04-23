@@ -1,22 +1,25 @@
 // test image
-const mockPhotos = [
-    { id: 1, url: "https://picsum.photos/seed/photo1/400/400", name: "photo1.jpg" },
-    { id: 2, url: "https://picsum.photos/seed/photo2/400/400", name: "photo2.jpg" },
-    { id: 3, url: "https://picsum.photos/seed/photo3/400/400", name: "photo3.jpg" },
-    { id: 4, url: "https://picsum.photos/seed/photo4/400/400", name: "photo4.jpg" },
-    { id: 5, url: "https://picsum.photos/seed/photo5/400/400", name: "photo5.jpg" },
-    { id: 6, url: "https://picsum.photos/seed/photo6/400/400", name: "photo6.jpg" },
-];
+// const mockPhotos = [
+//     { id: 1, url: "https://picsum.photos/seed/photo1/400/400", name: "photo1.jpg" },
+//     { id: 2, url: "https://picsum.photos/seed/photo2/400/400", name: "photo2.jpg" },
+//     { id: 3, url: "https://picsum.photos/seed/photo3/400/400", name: "photo3.jpg" },
+//     { id: 4, url: "https://picsum.photos/seed/photo4/400/400", name: "photo4.jpg" },
+//     { id: 5, url: "https://picsum.photos/seed/photo5/400/400", name: "photo5.jpg" },
+//     { id: 6, url: "https://picsum.photos/seed/photo6/400/400", name: "photo6.jpg" },
+// ];
+let mockPhotos = [];
 
-window.onload = function () {
+window.onload = async function () {
     if (!localStorage.getItem("token")) {
-        location.href = "pages/login.html";
+        location.href = "/pages/login.html";
         return;
     }
 
     const username = localStorage.getItem("username") || "User";
     document.getElementById("userName").innerText = "Hello, " + username;
+    localStorage.removeItem("photos");
 
+    mockPhotos = await DataService.getPhotos();
     renderImageGrid();
 };
 
@@ -31,19 +34,28 @@ function renderImageGrid() {
         card.dataset.url = photo.url;
         card.dataset.name = photo.name;
 
-        card.innerHTML = `
-            <div class="checkbox-wrapper">
-                <input type="checkbox" class="photo-checkbox">
-                <span class="checkmark">✓</span>
-            </div>
-            <img src="${photo.url}" alt="${photo.name}">
-        `;
+        // card.innerHTML = `
+        //     <div class="checkbox-wrapper">
+        //         <input type="checkbox" class="photo-checkbox">
+        //         <span class="checkmark">✓</span>
+        //     </div>
+        //     <img src="${photo.url}" alt="${photo.name}">
+        // `;
 
-        card.addEventListener("click", (e) => {
-            const checkbox = card.querySelector(".photo-checkbox");
-            checkbox.checked = !checkbox.checked;
-            card.classList.toggle("selected", checkbox.checked);
-        });
+        // card.addEventListener("click", (e) => {
+        //     const checkbox = card.querySelector(".photo-checkbox");
+        //     checkbox.checked = !checkbox.checked;
+        //     card.classList.toggle("selected", checkbox.checked);
+        // });
+
+        card.innerHTML = `
+        <input 
+        type="checkbox" 
+        class="download-checkbox"
+        value="${photo.id}"
+        style="position:absolute; top:8px; right:8px; width:22px; height:22px; z-index:10;">
+        <img src="${photo.url}" alt="photo" style="width:100%; height:100%; object-fit:cover;">
+        `;
 
         grid.appendChild(card);
     });
@@ -51,12 +63,15 @@ function renderImageGrid() {
 
 function getSelectedPhotos() {
     const selected = [];
-    document.querySelectorAll(".image-card.selected").forEach(card => {
-        selected.push({
-            id: card.dataset.id,
-            url: card.dataset.url,
-            name: card.dataset.name
-        });
+    // document.querySelectorAll(".image-card.selected").forEach(card => {
+    //     selected.push({
+    //         id: card.dataset.id,
+    //         url: card.dataset.url,
+    //         name: card.dataset.name
+    //     });
+    // });
+    document.querySelectorAll(".download-checkbox:checked").forEach(cb => {
+        selected.push(Number(cb.value));
     });
     return selected;
 }

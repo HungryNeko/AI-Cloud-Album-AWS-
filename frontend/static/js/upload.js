@@ -2,7 +2,7 @@ let selectedFiles = [];
 
 window.onload = function () {
     if (!localStorage.getItem("token")) {
-        location.href = "../pages/login.html";
+        location.href = "/pages/login.html";
         return;
     }
     const username = localStorage.getItem("username") || "User";
@@ -47,12 +47,23 @@ function removeFile(index) {
 }
 
 // Batch upload
-function startUpload() {
+async function startUpload() {
     if (selectedFiles.length === 0) {
         alert("Can't upload empty file");
         return;
     }
     // Need replacement, call backend upload
+    for (let file of selectedFiles) {
+    let url = URL.createObjectURL(file);
+    await DataService.addPhoto({
+      url: url,
+      label: "unknown",
+      lat: 39.9,
+      lng: 116.3,
+      name: ""
+    });
+  }
+
     alert(`Uploading ${selectedFiles.length} File`);
     selectedFiles = [];
     renderFileList();
@@ -60,15 +71,15 @@ function startUpload() {
 
 // Nvigation
 function goHome() {
-    location.href = "index.html";
+    location.href = "/pages/index.html";
 }
 function goUpload() {
-    location.href = "upload.html";
+    location.href = "/pages/upload.html";
 }
 function goDownload() {
-    location.href = "download.html"
+    location.href = "/pages/download.html"
 }
 function logout() {
     localStorage.clear();
-    location.href = "../pages/login.html";
+    location.href = "/pages/login.html";
 }

@@ -1,2 +1,3 @@
 data/mini-imagenet-test/
 data/mini-imagenet-test.tar
+**/**/*.pyc
