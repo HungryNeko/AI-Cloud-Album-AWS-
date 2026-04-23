@@ -3,3 +3,4 @@ boto3==1.34.162
 PyJWT==2.9.0
 Werkzeug==3.0.3
 python-dotenv==1.0.1
+gunicorn==25.3.0
