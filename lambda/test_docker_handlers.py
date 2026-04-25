@@ -128,12 +128,16 @@ def make_fake_aws_modules():
         def _item_key_from_item(self, item: dict[str, Any]) -> tuple[str, str]:
             if "user_id" in item and "image_id" in item:
                 return (str(item["user_id"]), str(item["image_id"]))
-            raise ValueError("FakeTable only supports (user_id, image_id) keys")
+            if "user_id" in item:
+                return (str(item["user_id"]), "")
+            raise ValueError("FakeTable only supports user_id or (user_id, image_id) keys")
 
         def _item_key_from_key(self, key: dict[str, Any]) -> tuple[str, str]:
             if "user_id" in key and "image_id" in key:
                 return (str(key["user_id"]), str(key["image_id"]))
-            raise ValueError("FakeTable key requires user_id and image_id")
+            if "user_id" in key:
+                return (str(key["user_id"]), "")
+            raise ValueError("FakeTable key requires user_id or user_id and image_id")
 
         def put_item(self, **kwargs):
             item = copy.deepcopy(kwargs["Item"])
@@ -158,13 +162,15 @@ def make_fake_aws_modules():
 
             proj = kwargs.get("ProjectionExpression")
             if proj:
+                names = kwargs.get("ExpressionAttributeNames", {}) or {}
                 proj_fields = [p.strip() for p in str(proj).split(",") if p.strip()]
                 projected = []
                 for item in items:
                     row = {}
                     for f in proj_fields:
-                        if f in item:
-                            row[f] = copy.deepcopy(item[f])
+                        attr = names.get(f, f)
+                        if attr in item:
+                            row[attr] = copy.deepcopy(item[attr])
                     projected.append(row)
                 items = projected
             else:
@@ -304,6 +310,7 @@ def set_env_for_test(work_dir: Path):
     overrides = {
         "AWS_REGION": "us-west-1",
         "DYNAMODB_IMAGE_TABLE": "ImageMetadata",
+        "DYNAMODB_USER_TABLE": "Users",
         "S3_BUCKET": "fake-bucket",
         "DOWNLOAD_ZIP_PREFIX": "downloads",
         "LAMBDA_TIME_GUARD_SECONDS": "30",
@@ -494,6 +501,12 @@ def test_full_pipeline(work_dir: Path, dataset_root: Path, image_count: int) -> 
         raise AssertionError(f"class_full questions mismatch: {class_reply}")
     append_txt(work_dir / "pipeline.txt", "class " + json.dumps(class_reply))
 
+    table_items = fake_state["tables"].get(os.getenv("DYNAMODB_IMAGE_TABLE", "ImageMetadata"), {})
+    for item in table_items.values():
+        status = item.get("status")
+        if status != "done":
+            raise AssertionError(f"expected class status done, got {status}: {item}")
+
     name_event = {
         "task_id": "name-full",
         "images": {image_id: f"name-{i+1}" for i, image_id in enumerate(image_ids)},
@@ -515,7 +528,6 @@ def test_full_pipeline(work_dir: Path, dataset_root: Path, image_count: int) -> 
         raise AssertionError(f"download_full missing zip_link: {download_reply}")
     append_txt(work_dir / "pipeline.txt", "download " + json.dumps(download_reply))
 
-    table_items = fake_state["tables"].get(os.getenv("DYNAMODB_IMAGE_TABLE", "ImageMetadata"), {})
     if len(table_items) != len(copied_images):
         raise AssertionError(f"db row count mismatch: expected {len(copied_images)}, got {len(table_items)}")
 
@@ -532,12 +544,18 @@ def test_full_pipeline(work_dir: Path, dataset_root: Path, image_count: int) -> 
     if dl_key not in s3_bucket:
         raise AssertionError("download zip not uploaded to fake s3: " + download_reply["zip_link"])
 
+    user_table = fake_state["tables"].get(os.getenv("DYNAMODB_USER_TABLE", "Users"), {})
+    user_item = user_table.get(("user1@example.com", ""))
+    if not user_item or user_item.get("zip_download") != dl_key:
+        raise AssertionError(f"user zip_download mismatch: {user_item}, expected {dl_key}")
+
     return {
         "upload": upload_reply,
         "class": class_reply,
         "name": name_reply,
         "download": download_reply,
         "db_rows": len(table_items),
+        "user_zip_download": user_item.get("zip_download"),
         "s3_objects": sum(len(v) for v in fake_state["s3"].values()),
         "dataset_root": str(dataset_root),
         "image_count": len(copied_images),
@@ -559,7 +577,7 @@ def test_not_finished_semantics(work_dir: Path) -> dict[str, Any]:
     )
 
     class_pro = class_module.handler(
-        {"task_id": "class-timeout", "images": ["img1", "img2"]},
+        ["img1", "img2"],
         FakeContext(remaining_ms=1_000),
     )
     class_pro.run()

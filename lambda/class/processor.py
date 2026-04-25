@@ -2,9 +2,8 @@
 
 import numpy as np
 from PIL import Image
-from ultralytics import YOLO
 import onnxruntime as ort
-from labels import ANIMAL_LABELS
+from labels import ANIMAL_LABELS, LABELS
 
 class processor:
     # load model in init
@@ -20,12 +19,7 @@ class processor:
 
         self.input_name = self.session.get_inputs()[0].name
 
-        try:
-            self.class_names = YOLO(str(model_path)).names
-        except Exception:
-            output_shape = self.session.get_outputs()[0].shape
-            num_classes = output_shape[1] if len(output_shape) > 1 else 0
-            self.class_names = {i: str(i) for i in range(num_classes)}
+        self.class_names = {i: label for i, label in enumerate(LABELS)}
 
     def predict(self, image: Image.Image) -> str:
         if not isinstance(image, Image.Image):

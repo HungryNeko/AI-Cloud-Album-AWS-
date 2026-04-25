@@ -25,13 +25,38 @@ import boto3
 from boto3.dynamodb.conditions import Attr
 
 TIME_GUARD_SECONDS = int(os.getenv("LAMBDA_TIME_GUARD_SECONDS", "30"))
+DEFAULT_AWS_REGION = "us-west-1"
+DEFAULT_IMAGE_TABLE = "ImageMetadata"
+IMAGE_REF_SEPARATOR = "#"
 
 
 def _image_table():
-    region = os.getenv("AWS_REGION", "us-west-1")
-    table_name = os.getenv("DYNAMODB_IMAGE_TABLE", "ImageMetadata")
+    region = os.getenv("AWS_REGION", DEFAULT_AWS_REGION)
+    table_name = os.getenv("DYNAMODB_IMAGE_TABLE", DEFAULT_IMAGE_TABLE)
     session = boto3.Session(region_name=region)
     return session.resource("dynamodb").Table(table_name)
+
+
+def _make_image_ref(user_id: str, image_id: str) -> str:
+    return f"{user_id}{IMAGE_REF_SEPARATOR}{image_id}"
+
+
+def _parse_image_ref(value: str) -> tuple[str, str]:
+    if IMAGE_REF_SEPARATOR in value:
+        user_id, image_id = value.split(IMAGE_REF_SEPARATOR, 1)
+        if user_id and image_id:
+            return user_id, image_id
+    return "", value
+
+
+def _parse_image_input(value: str) -> tuple[str, str]:
+    user_id, image_id = _parse_image_ref(value)
+    if user_id:
+        return user_id, image_id
+    parts = value.split("/", 2)
+    if len(parts) >= 2 and parts[0] and parts[1]:
+        return parts[0], parts[1]
+    return "", value
 
 
 class processor:
@@ -45,6 +70,8 @@ class processor:
         self.run_success=True
         self.wait_to_write=[]
         self.writed=set()
+        self.task_users={}
+        self.task_refs={}
         self.time_exhausted=False
         self.read_msg(event)
     
@@ -68,7 +95,18 @@ class processor:
                 self.msg='Error when loading sqs msg: images should be dict'
                 self.run_success=False
                 return
-            self.tasks={str(k):str(v) for k,v in images.items()}
+            self.tasks={}
+            self.task_users={}
+            self.task_refs={}
+            for raw_ref,answer in images.items():
+                user_id,image_id=_parse_image_input(str(raw_ref))
+                if not image_id:
+                    self.msg='Error when loading sqs msg: images should use non-empty image_id keys'
+                    self.run_success=False
+                    return
+                self.tasks[image_id]=str(answer)
+                self.task_users[image_id]=user_id
+                self.task_refs[image_id]=str(raw_ref) if user_id else ''
         except Exception as e:
             self.msg='Error when loading sqs msg: '+str(e)
             self.run_success=False
@@ -82,7 +120,14 @@ class processor:
         threshold_ms = threshold_seconds * 1000
         return remaining_time_ms >= threshold_ms
 
-    def _resolve_user_id(self, table, image_id: str) -> str:
+    def _resolve_record(self, table, image_id: str) -> dict:
+        user_id=str(self.task_users.get(image_id,'')).strip()
+        if user_id:
+            resp=table.get_item(Key={'user_id':user_id,'image_id':image_id})
+            item=resp.get('Item')
+            if item:
+                self.task_refs[image_id]=_make_image_ref(user_id,image_id)
+                return item
         start_key=None
         while True:
             scan_kwargs={
@@ -95,10 +140,21 @@ class processor:
             resp=table.scan(**scan_kwargs)
             items=resp.get('Items',[])
             if items:
-                return str(items[0].get('user_id',''))
+                found_user_id=str(items[0].get('user_id',''))
+                if found_user_id:
+                    self.task_users[image_id]=found_user_id
+                    self.task_refs[image_id]=_make_image_ref(found_user_id,image_id)
+                return items[0]
             start_key=resp.get('LastEvaluatedKey')
             if not start_key:
-                return ''
+                return {}
+
+    def _resolve_user_id(self, table, image_id: str) -> str:
+        record=self._resolve_record(table,image_id)
+        return str(record.get('user_id','')) if record else ''
+
+    def _image_ref_for(self, image_id: str) -> str:
+        return image_id
     
     def write_database(self)->bool:
         try:
@@ -108,9 +164,12 @@ class processor:
                 if not self.has_enough_time():
                     self.time_exhausted=True
                     return False
-                user_id=self._resolve_user_id(table,image_id)
+                record=self._resolve_record(table,image_id)
+                user_id=str(record.get('user_id','')) if record else ''
                 if not user_id:
                     raise ValueError('user_id not found for image_id: '+image_id)
+                self.task_users[image_id]=user_id
+                self.task_refs[image_id]=_make_image_ref(user_id,image_id)
                 answer=self.tasks.get(image_id,'')
                 table.update_item(
                     Key={'user_id':user_id,'image_id':image_id},
@@ -135,7 +194,7 @@ class processor:
         task_items=list(self.tasks.items())
         if not self.has_enough_time():
             self.time_exhausted=True
-            self.not_finished=[image_id for image_id,_ in task_items]
+            self.not_finished=[self._image_ref_for(image_id) for image_id,_ in task_items]
             return
         for i,(k,v) in enumerate(task_items):
             self.wait_to_write.append(k)
@@ -157,7 +216,7 @@ class processor:
                     return
         for image_id in self.tasks.keys():
             if image_id not in self.writed:
-                self.not_finished.append(image_id)
+                self.not_finished.append(self._image_ref_for(image_id))
         return
 
     def run(self):

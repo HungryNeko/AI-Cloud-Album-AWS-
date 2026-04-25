@@ -10,6 +10,7 @@ output:
     "task_id": "3",
     "run_success": True,
     "zip_link": "<s3 link for zip file>",
+    "zip_s3_key": "<s3 key for zip file>",
     "msg": "finished"
 }
 """
@@ -25,20 +26,52 @@ import boto3
 from boto3.dynamodb.conditions import Attr
 
 TIME_GUARD_SECONDS = int(os.getenv("LAMBDA_TIME_GUARD_SECONDS", "30"))
+DEFAULT_AWS_REGION = "us-west-1"
+DEFAULT_S3_BUCKET = "ee547-project-group5-ai-cloud-album"
+DEFAULT_IMAGE_TABLE = "ImageMetadata"
+DEFAULT_USER_TABLE = "Users"
+IMAGE_REF_SEPARATOR = "#"
 
 
 def _session():
-    region = os.getenv("AWS_REGION", "us-west-1")
+    region = os.getenv("AWS_REGION", DEFAULT_AWS_REGION)
     return boto3.Session(region_name=region)
 
 
 def _image_table():
-    table_name = os.getenv("DYNAMODB_IMAGE_TABLE", "ImageMetadata")
+    table_name = os.getenv("DYNAMODB_IMAGE_TABLE", DEFAULT_IMAGE_TABLE)
+    return _session().resource("dynamodb").Table(table_name)
+
+
+def _user_table():
+    table_name = os.getenv("DYNAMODB_USER_TABLE", DEFAULT_USER_TABLE)
     return _session().resource("dynamodb").Table(table_name)
 
 
 def _s3_client():
     return _session().client("s3")
+
+
+def _bucket_name():
+    return os.getenv("S3_BUCKET", DEFAULT_S3_BUCKET)
+
+
+def _parse_image_ref(value: str) -> tuple[str, str]:
+    if IMAGE_REF_SEPARATOR in value:
+        user_id, image_id = value.split(IMAGE_REF_SEPARATOR, 1)
+        if user_id and image_id:
+            return user_id, image_id
+    return "", value
+
+
+def _parse_image_input(value: str) -> tuple[str, str, str]:
+    user_id, image_id = _parse_image_ref(value)
+    if user_id:
+        return user_id, image_id, ""
+    parts = value.split("/", 2)
+    if len(parts) >= 2 and parts[0] and parts[1]:
+        return parts[0], parts[1], value
+    return "", value, ""
 
 
 class handler:
@@ -49,6 +82,8 @@ class handler:
         self.context = context
         self.files = []
         self.zip_link = ""
+        self.zip_s3_key = ""
+        self.user_ids = set()
         self.msg = ""
         self.run_success = True
         self.temp_dir = None
@@ -128,9 +163,7 @@ class handler:
 
     def load_images(self, image_list: list) -> list:
         try:
-            bucket = os.getenv("S3_BUCKET", "")
-            if not bucket:
-                raise ValueError("S3_BUCKET is required")
+            bucket = _bucket_name()
             table = _image_table()
             s3 = _s3_client()
             if self.temp_dir is None:
@@ -143,16 +176,27 @@ class handler:
                     return files
                 image_id = ""
                 user_id = ""
+                direct_s3_key = ""
                 if isinstance(item, dict):
                     image_id = str(item.get("image_id", ""))
                     user_id = str(item.get("user_id", ""))
+                    direct_s3_key = str(item.get("s3_key", ""))
                 else:
-                    image_id = str(item)
+                    user_id, image_id, direct_s3_key = _parse_image_input(str(item))
                 if not image_id:
                     raise ValueError("image_id is required")
                 record = self._resolve_record(table, image_id, user_id)
                 if not self.run_success:
                     return files
+                if not record and direct_s3_key and user_id:
+                    record = {
+                        "user_id": user_id,
+                        "image_id": image_id,
+                        "s3_key": direct_s3_key,
+                    }
+                record_user_id = str(record.get("user_id", "") or user_id).strip()
+                if record_user_id:
+                    self.user_ids.add(record_user_id)
                 s3_key = str(record.get("s3_key", ""))
                 if not s3_key:
                     raise ValueError("s3_key not found for image_id: " + image_id)
@@ -198,9 +242,7 @@ class handler:
                 self.msg = "Error when writing to s3: not enough remaining time"
                 self.run_success = False
                 return ""
-            bucket = os.getenv("S3_BUCKET", "")
-            if not bucket:
-                raise ValueError("S3_BUCKET is required")
+            bucket = _bucket_name()
             key_prefix = os.getenv("DOWNLOAD_ZIP_PREFIX", "downloads").strip("/")
             if not key_prefix:
                 key_prefix = "downloads"
@@ -208,11 +250,40 @@ class handler:
             s3_key = f"{key_prefix}/{date_part}/{self.task_id}_{uuid4().hex}.zip"
             zip_path = Path(zip_file)
             _s3_client().upload_file(str(zip_path), bucket, s3_key)
+            self.zip_s3_key = s3_key
             return f"s3://{bucket}/{s3_key}"
         except Exception as e:
             self.msg = "Error when writing to s3: " + str(e)
             self.run_success = False
             return ""
+
+    def write_user_download_key(self) -> bool:
+        try:
+            if not self.has_enough_time():
+                self.msg = "Error when writing to user database: not enough remaining time"
+                self.run_success = False
+                return False
+            if not self.zip_s3_key:
+                raise ValueError("zip_s3_key is empty")
+            if not self.user_ids:
+                raise ValueError("user_id not found for download task")
+            table = _user_table()
+            now = datetime.utcnow().isoformat()
+            for user_id in sorted(self.user_ids):
+                table.update_item(
+                    Key={"user_id": user_id},
+                    UpdateExpression="SET zip_download = :z, updated_at = :t",
+                    ConditionExpression="attribute_exists(user_id)",
+                    ExpressionAttributeValues={
+                        ":z": self.zip_s3_key,
+                        ":t": now,
+                    },
+                )
+            return True
+        except Exception as e:
+            self.msg = "Error when writing to user database: " + str(e)
+            self.run_success = False
+            return False
 
     def process(self) -> None:
         if not self.has_enough_time():
@@ -240,6 +311,13 @@ class handler:
         if not self.run_success:
             return
 
+        if not self.has_enough_time():
+            self.msg = "Error when processing: not enough remaining time"
+            self.run_success = False
+            return
+        if not self.write_user_download_key():
+            return
+
     def run(self):
         if self.run_success == False:
             return
@@ -257,6 +335,7 @@ class handler:
             "task_id": self.task_id,
             "run_success": self.run_success,
             "zip_link": self.zip_link,
+            "zip_s3_key": self.zip_s3_key,
             "msg": self.msg,
         }
         return msg
