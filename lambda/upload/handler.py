@@ -16,20 +16,68 @@ output:
 """
 import json
 import os
+import tempfile
+import zipfile
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 from uuid import uuid4
 
 import boto3
 
 TIME_GUARD_SECONDS = int(os.getenv("LAMBDA_TIME_GUARD_SECONDS", "30"))
+DEFAULT_AWS_REGION = "us-west-1"
+DEFAULT_S3_BUCKET = "ee547-project-group5-ai-cloud-album"
+DEFAULT_IMAGE_TABLE = "ImageMetadata"
+ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+
+
+def _session():
+    region = os.getenv("AWS_REGION", DEFAULT_AWS_REGION)
+    return boto3.Session(region_name=region)
 
 
 def _image_table():
-    region = os.getenv("AWS_REGION", "us-west-1")
-    table_name = os.getenv("DYNAMODB_IMAGE_TABLE", "ImageMetadata")
-    session = boto3.Session(region_name=region)
-    return session.resource("dynamodb").Table(table_name)
+    table_name = os.getenv("DYNAMODB_IMAGE_TABLE", DEFAULT_IMAGE_TABLE)
+    return _session().resource("dynamodb").Table(table_name)
+
+
+def _s3_client():
+    return _session().client("s3")
+
+
+def _bucket_name():
+    return os.getenv("S3_BUCKET", DEFAULT_S3_BUCKET)
+
+
+def _parse_s3_link(link: str) -> tuple[str, str]:
+    parsed = urlparse(link)
+    if parsed.scheme == "s3":
+        return parsed.netloc, parsed.path.lstrip("/")
+    if parsed.scheme in ("http", "https"):
+        host = parsed.netloc
+        path = parsed.path.lstrip("/")
+        suffix = ".s3." + os.getenv("AWS_REGION", DEFAULT_AWS_REGION) + ".amazonaws.com"
+        if host.endswith(suffix):
+            return host[: -len(suffix)], unquote(path)
+        if ".s3." in host and host.endswith(".amazonaws.com"):
+            return host.split(".s3.", 1)[0], unquote(path)
+    raise ValueError("zip_link must be an s3:// URI or S3 object URL")
+
+
+def _safe_file_name(raw_name: str, fallback: str) -> str:
+    safe_name = os.path.basename(raw_name).replace("/", "_").replace("\\", "_")
+    return safe_name or fallback
+
+
+def _s3_key_for_image(user_id: str, image_id: str, image_file) -> str:
+    raw_name = ""
+    if hasattr(image_file, "name"):
+        raw_name = str(getattr(image_file, "name", "") or "")
+    elif isinstance(image_file, (str, Path)):
+        raw_name = str(image_file)
+    safe_name = _safe_file_name(raw_name, image_id)
+    return f"{user_id}/{image_id}/{safe_name}"
 
 
 class handler:
@@ -43,6 +91,7 @@ class handler:
         self.images = []
         self.msg = ""
         self.run_success = True
+        self.temp_dir = None
         self.read_msg(event)
 
     def read_msg(self, event: str) -> None:
@@ -76,10 +125,30 @@ class handler:
 
     def load_zip(self) -> list:
         try:
-            pass
-            # TODO: use the final S3/link helper to read self.zip_link.
-            # unzip the zip file and return image file objects or temp paths.
-            return []
+            source_bucket, source_key = _parse_s3_link(self.zip_link)
+            if self.temp_dir is None:
+                self.temp_dir = Path(tempfile.mkdtemp(prefix="lambda_upload_"))
+            zip_path = self.temp_dir / f"{self.task_id}_{uuid4().hex}.zip"
+            with zip_path.open("wb") as f:
+                _s3_client().download_fileobj(source_bucket, source_key, f)
+
+            extract_dir = self.temp_dir / "extracted"
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            files = []
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                for member in zf.infolist():
+                    if member.is_dir():
+                        continue
+                    target = (extract_dir / member.filename).resolve()
+                    if extract_dir.resolve() not in target.parents:
+                        raise ValueError("zip contains unsafe path: " + member.filename)
+                    if target.suffix.lower() not in ALLOWED_IMAGE_SUFFIXES:
+                        continue
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with zf.open(member, "r") as src, target.open("wb") as dst:
+                        dst.write(src.read())
+                    files.append(target)
+            return files
         except Exception as e:
             self.msg = "Error when loading zip: " + str(e)
             self.run_success = False
@@ -87,8 +156,9 @@ class handler:
 
     def write_s3(self, image_id: str, image_file) -> bool:
         try:
-            pass
-            # TODO: upload image_file to S3 with the final helper.
+            bucket = _bucket_name()
+            s3_key = _s3_key_for_image(self.user_id, image_id, image_file)
+            _s3_client().upload_file(str(Path(image_file)), bucket, s3_key)
             return True
         except Exception as e:
             self.msg = "Error when writing to s3: " + str(e)
@@ -97,15 +167,7 @@ class handler:
 
     def write_database(self, image_id: str, image_file) -> bool:
         try:
-            raw_name = ""
-            if hasattr(image_file, "name"):
-                raw_name = str(getattr(image_file, "name", "") or "")
-            elif isinstance(image_file, (str, Path)):
-                raw_name = str(image_file)
-            safe_name = os.path.basename(raw_name).replace("/", "_").replace("\\", "_")
-            if not safe_name:
-                safe_name = image_id
-            s3_key = f"{self.user_id}/{image_id}/{safe_name}"
+            s3_key = _s3_key_for_image(self.user_id, image_id, image_file)
             now = datetime.utcnow().isoformat()
             _image_table().put_item(
                 Item={

@@ -1,0 +1,7 @@
+[
+  {
+    "user_id": "test_2c6c5ba6c5@example.com",
+    "image_id": "229b6787-34d3-435c-bbb8-9d0c79eec148",
+    "s3_key": "test_2c6c5ba6c5@example.com/229b6787-34d3-435c-bbb8-9d0c79eec148/test.jpg"
+  }
+]
