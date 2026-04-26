@@ -26,3 +26,23 @@ ImageMetadata = {
   "created_at": "...",
   "updated_at": "..."
 }
+
+ZipJobs = {
+  "user_id": "xxx",    // Partition Key
+  "job_id": "xxx",     // Sort Key
+
+  "type": "zip_upload | download",
+
+  "status": "uploaded | processing | complete | failed",
+
+  "s3_key": "uploads/zips/xxx.zip",  // upload only
+  "result_s3_key": "downloads/xxx.zip",  // download only
+
+  "total_files": 10,
+  "processed_files": 3,
+
+  "image_ids": ["img1", "img2", "img3", "img4", "img5"],  // download only
+
+  "created_at": "...",
+  "updated_at": "..."
+}

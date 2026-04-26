@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from services.storage_service import upload_file_to_s3
-from services.queue_service import send_job_to_sqs
+from services.queue_service import send_job_to_sqs_image
 from services.db_service import create_image_record, update_image_status
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
@@ -36,7 +36,7 @@ def create_upload_job(file_obj, user_id: str):
         "updated_at": datetime.utcnow().isoformat()
     })
 
-    send_job_to_sqs({
+    send_job_to_sqs_image({
         "user_id": user_id,
         "image_id": image_id,
         "s3_key": s3_key
