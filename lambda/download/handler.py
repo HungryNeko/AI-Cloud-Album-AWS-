@@ -1,8 +1,9 @@
 """
 input:
 {
-    "task_id": "3",
-    "images": ["id1", "id2"]
+    "user_id": "u1",
+    "job_id": "job_456",
+    "image_ids": ["img1", "img2"]
 }
 
 output:
@@ -30,6 +31,7 @@ DEFAULT_AWS_REGION = "us-west-1"
 DEFAULT_S3_BUCKET = "ee547-project-group5-ai-cloud-album"
 DEFAULT_IMAGE_TABLE = "ImageMetadata"
 DEFAULT_USER_TABLE = "Users"
+DEFAULT_ZIP_JOBS_TABLE = "ZipJobs"
 IMAGE_REF_SEPARATOR = "#"
 
 
@@ -45,6 +47,11 @@ def _image_table():
 
 def _user_table():
     table_name = os.getenv("DYNAMODB_USER_TABLE", DEFAULT_USER_TABLE)
+    return _session().resource("dynamodb").Table(table_name)
+
+
+def _zip_jobs_table():
+    table_name = os.getenv("DYNAMODB_ZIP_JOBS_TABLE", DEFAULT_ZIP_JOBS_TABLE)
     return _session().resource("dynamodb").Table(table_name)
 
 
@@ -78,12 +85,15 @@ class handler:
 
     def __init__(self, event, context):
         self.task_id = ""
+        self.job_id = ""
+        self.user_id = ""
         self.tasks = []
         self.context = context
         self.files = []
         self.zip_link = ""
         self.zip_s3_key = ""
         self.user_ids = set()
+        self.zip_job_started = False
         self.msg = ""
         self.run_success = True
         self.temp_dir = None
@@ -95,24 +105,42 @@ class handler:
             payload = event
             if isinstance(payload, str):
                 payload = json.loads(payload)
+            if isinstance(payload, dict) and "body" in payload:
+                body = payload.get("body")
+                if isinstance(body, str):
+                    body = json.loads(body)
+                if isinstance(body, dict):
+                    payload = body
+            if isinstance(payload, dict) and isinstance(payload.get("Records"), list):
+                records = payload.get("Records", [])
+                if len(records) != 1:
+                    self.msg = "Error when loading msg: download handles one SQS record per invocation"
+                    self.run_success = False
+                    return
+                body = records[0].get("body", records[0]) if isinstance(records[0], dict) else records[0]
+                if isinstance(body, str):
+                    body = json.loads(body)
+                payload = body
             if not isinstance(payload, dict):
                 self.msg = "Error when loading msg: event should be dict"
                 self.run_success = False
                 return
-            self.task_id = str(payload.get("task_id", ""))
-            images = payload.get("images", [])
-            if not self.task_id:
-                self.msg = "Error when loading msg: task_id is required"
+            self.user_id = str(payload.get("user_id", "")).strip()
+            self.job_id = str(payload.get("job_id") or payload.get("task_id") or "").strip()
+            self.task_id = self.job_id
+            images = payload.get("image_ids", payload.get("images", []))
+            if not self.user_id or not self.job_id:
+                self.msg = "Error when loading msg: user_id and job_id are required"
                 self.run_success = False
                 return
             if not isinstance(images, list):
-                self.msg = "Error when loading msg: images should be list"
+                self.msg = "Error when loading msg: image_ids should be list"
                 self.run_success = False
                 return
             self.tasks = []
             for entry in images:
                 if not isinstance(entry, str) or not entry:
-                    self.msg = "Error when loading msg: images must contain non-empty image_id strings"
+                    self.msg = "Error when loading msg: image_ids must contain non-empty image_id strings"
                     self.run_success = False
                     return
                 self.tasks.append(entry)
@@ -139,6 +167,7 @@ class handler:
             item = resp.get("Item")
             if item:
                 return item
+            return {}
         start_key = None
         while True:
             if not self.has_enough_time():
@@ -179,10 +208,12 @@ class handler:
                 direct_s3_key = ""
                 if isinstance(item, dict):
                     image_id = str(item.get("image_id", ""))
-                    user_id = str(item.get("user_id", ""))
+                    user_id = str(item.get("user_id") or self.user_id)
                     direct_s3_key = str(item.get("s3_key", ""))
                 else:
                     user_id, image_id, direct_s3_key = _parse_image_input(str(item))
+                    if not user_id:
+                        user_id = self.user_id
                 if not image_id:
                     raise ValueError("image_id is required")
                 record = self._resolve_record(table, image_id, user_id)
@@ -216,6 +247,85 @@ class handler:
             self.msg = "Error when loading images: " + str(e)
             self.run_success = False
             return []
+
+    def write_zip_job(self, status: str, result_s3_key: str = "") -> bool:
+        try:
+            if not self.user_id or not self.job_id:
+                raise ValueError("user_id and job_id are required")
+            now = datetime.utcnow().isoformat()
+            table = _zip_jobs_table()
+            if status == "processing" and not self.zip_job_started:
+                table.put_item(
+                    Item={
+                        "user_id": self.user_id,
+                        "job_id": self.job_id,
+                        "type": "download",
+                        "status": status,
+                        "result_s3_key": result_s3_key,
+                        "total_files": len(self.tasks),
+                        "image_ids": self.tasks,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                )
+                self.zip_job_started = True
+                return True
+
+            update = "SET #s = :s, updated_at = :t"
+            names = {"#s": "status"}
+            values = {
+                ":s": status,
+                ":t": now,
+            }
+            if result_s3_key:
+                update += ", result_s3_key = :r"
+                values[":r"] = result_s3_key
+            table.update_item(
+                Key={"user_id": self.user_id, "job_id": self.job_id},
+                UpdateExpression=update,
+                ExpressionAttributeNames=names,
+                ExpressionAttributeValues=values,
+            )
+            return True
+        except Exception as e:
+            self.msg = "Error when writing zip job database: " + str(e)
+            self.run_success = False
+            return False
+
+    def mark_zip_job_failed(self) -> None:
+        if not self.user_id or not self.job_id:
+            return
+        previous_msg = self.msg
+        try:
+            table = _zip_jobs_table()
+            now = datetime.utcnow().isoformat()
+            if not self.zip_job_started:
+                table.put_item(
+                    Item={
+                        "user_id": self.user_id,
+                        "job_id": self.job_id,
+                        "type": "download",
+                        "status": "failed",
+                        "result_s3_key": self.zip_s3_key,
+                        "total_files": len(self.tasks),
+                        "image_ids": self.tasks,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                )
+                self.zip_job_started = True
+                return
+            table.update_item(
+                Key={"user_id": self.user_id, "job_id": self.job_id},
+                UpdateExpression="SET #s = :s, updated_at = :t",
+                ExpressionAttributeNames={"#s": "status"},
+                ExpressionAttributeValues={
+                    ":s": "failed",
+                    ":t": now,
+                },
+            )
+        except Exception as e:
+            self.msg = previous_msg or ("Error when writing failed zip job status: " + str(e))
 
     def make_zip(self, files: list):
         try:
@@ -290,6 +400,9 @@ class handler:
             self.msg = "Error when processing: not enough remaining time"
             self.run_success = False
             return
+        self.user_ids.add(self.user_id)
+        if not self.write_zip_job("processing"):
+            return
 
         self.files = self.load_images(self.tasks)
         if not self.run_success:
@@ -317,6 +430,8 @@ class handler:
             return
         if not self.write_user_download_key():
             return
+        if not self.write_zip_job("complete", self.zip_s3_key):
+            return
 
     def run(self):
         if self.run_success == False:
@@ -324,18 +439,30 @@ class handler:
         if len(self.tasks) > 10000:
             self.run_success = False
             self.msg = "Error for too much Files"
+            self.mark_zip_job_failed()
             return
         self.process()
         if self.run_success == False:
+            self.mark_zip_job_failed()
             return
         self.msg = "finished"
 
     def reply(self):
         msg = {
             "task_id": self.task_id,
+            "user_id": self.user_id,
+            "job_id": self.job_id,
             "run_success": self.run_success,
             "zip_link": self.zip_link,
             "zip_s3_key": self.zip_s3_key,
+            "zip_job": {
+                "table": os.getenv("DYNAMODB_ZIP_JOBS_TABLE", DEFAULT_ZIP_JOBS_TABLE),
+                "status": "complete" if self.run_success else "failed",
+                "type": "download",
+                "result_s3_key": self.zip_s3_key,
+                "total_files": len(self.tasks),
+                "image_ids": self.tasks,
+            },
             "msg": self.msg,
         }
         return msg

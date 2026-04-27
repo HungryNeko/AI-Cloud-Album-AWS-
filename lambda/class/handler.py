@@ -50,7 +50,8 @@ DEFAULT_AWS_REGION = "us-west-1"
 DEFAULT_S3_BUCKET = "ee547-project-group5-ai-cloud-album"
 DEFAULT_IMAGE_TABLE = "ImageMetadata"
 IMAGE_REF_SEPARATOR = "#"
-HANDLER_VERSION = "class-strict-2026-04-25-02"
+HANDLER_VERSION = "class-strict-2026-04-26-01"
+TERMINAL_STATUSES = {"complete", "failed"}
 
 
 def _session():
@@ -245,17 +246,15 @@ class handler:
                     self.add_error(image_id,'image record not found')
                     continue
                 status=str(record.get('status','')).strip()
-                if status!='uploaded':
+                if status.lower() in TERMINAL_STATUSES:
                     self.skipped.add(image_id)
-                    self.add_error(image_id,'image status is not uploaded: '+status)
+                    self.add_error(image_id,'image status is terminal: '+status)
                     continue
                 user_id=str(record.get('user_id','')).strip()
                 if not user_id:
                     self.failed.add(image_id)
                     self.add_error(image_id,'user_id not found in image record')
                     continue
-                if not self._update_status(table,user_id,image_id,'processing'):
-                    return images
                 s3_key=str(record.get('s3_key','')).strip()
                 if not s3_key:
                     self._mark_failed(table,image_id,record,'s3_key not found in image record')
@@ -375,7 +374,7 @@ class handler:
                 result=self.finished.get(image_id,{})
                 label=str(result.get('label',''))
                 question=str(result.get('question','') or '')
-                status='done'
+                status='complete'
                 location=self._normalize_location(result.get('coordinate'))
                 record=self._resolve_record(table,image_id)
                 user_id=str(record.get('user_id','')) if record else ''
