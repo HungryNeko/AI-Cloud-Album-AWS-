@@ -10,6 +10,9 @@ def _user_table():
 def _image_table():
     return dynamodb_resource().Table(current_app.config["DYNAMODB_IMAGE_TABLE"])
 
+def _job_table():
+    return dynamodb_resource().Table(current_app.config["DYNAMODB_JOB_TABLE"])
+
 # ---------- Users ----------
 def create_user(email: str, password: str):
     user_id = email
@@ -110,3 +113,32 @@ def add_followup_answer(user_id: str, image_id: str, answer: dict):
     )
     item["followup_answers"] = answers
     return item
+
+# ---------- Jobs ----------
+def create_job_record(item: dict):
+    _job_table().put_item(Item=item)
+    return item
+
+def get_job_record(user_id: str, job_id: str):
+    resp = _job_table().get_item(
+        Key={"user_id": user_id, "job_id": job_id}
+    )
+    return resp.get("Item")
+
+def list_jobs_by_user(user_id: str):
+    resp = _job_table().query(
+        KeyConditionExpression="user_id = :u",
+        ExpressionAttributeValues={":u": user_id}
+    )
+    return resp.get("Items", [])
+
+def update_job_status(user_id: str, job_id: str, status: str):
+    _job_table().update_item(
+        Key={"user_id": user_id, "job_id": job_id},
+        UpdateExpression="SET #s = :s, updated_at = :t",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={
+            ":s": status,
+            ":t": datetime.utcnow().isoformat()
+        }
+    )

@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 from services.storage_service import upload_file_to_s3
-from services.queue_service import send_job_to_sqs_image
-from services.db_service import create_image_record, update_image_status
+from services.queue_service import send_job_to_sqs_image, send_job_to_sqs_zip_upload, send_job_to_sqs_download
+from services.db_service import create_image_record, update_image_status, create_job_record, update_job_status
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
@@ -50,5 +50,93 @@ def create_upload_job(file_obj, user_id: str):
             "image_id": image_id,
             "status": "processing",
             "s3_key": s3_key
+        }
+    }
+
+
+def create_upload_zip_job(file_obj, user_id: str):
+    if not file_obj or not file_obj.filename:
+        return {"ok": False, "message": "file is required"}
+
+    if not file_obj.filename.endswith(".zip"):
+        return {"ok": False, "message": "invalid file type"}
+
+    job_id = str(uuid.uuid4())
+    s3_key = f"uploads/zips/{user_id}/{job_id}.zip"
+
+    upload_file_to_s3(file_obj, s3_key)
+
+    create_job_record({
+        "user_id": user_id,
+        "job_id": job_id,
+        "type": "zip_upload",
+        "status": "uploaded",
+        "s3_key": s3_key,
+        "result_s3_key": None,
+        "total_files": 0,
+        "processed_files": 0,
+        "image_ids": [],
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat()
+    })
+
+    send_job_to_sqs_zip_upload({
+        "user_id": user_id,
+        "job_id": job_id,
+        "s3_key": s3_key
+    })
+
+    update_job_status(user_id, job_id, "processing")
+
+    return {
+        "ok": True,
+        "data": {
+            "job_id": job_id,
+            "status": "processing",
+            "s3_key": s3_key
+        }
+    }
+
+
+def create_download_job(image_ids, user_id: str):
+    if not image_ids or not isinstance(image_ids, list):
+        return {"ok": False, "message": "invalid image_ids"}
+
+    if len(image_ids) == 0:
+        return {"ok": False, "message": "invalid image_ids"}
+
+    job_id = str(uuid.uuid4())
+
+    create_job_record({
+        "user_id": user_id,
+        "job_id": job_id,
+        "type": "download",
+        "status": "uploaded",
+
+        "s3_key": None,
+        "result_s3_key": None,
+
+        "total_files": len(image_ids),
+        "processed_files": 0,
+
+        "image_ids": image_ids,
+
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat()
+    })
+
+    send_job_to_sqs_download({
+        "user_id": user_id,
+        "job_id": job_id,
+        "image_ids": image_ids
+    })
+
+    update_job_status(user_id, job_id, "processing")
+
+    return {
+        "ok": True,
+        "data": {
+            "job_id": job_id,
+            "status": "processing"
         }
     }
