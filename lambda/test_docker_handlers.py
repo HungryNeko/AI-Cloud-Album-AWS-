@@ -107,6 +107,7 @@ def make_fake_aws_modules():
     state: dict[str, Any] = {
         "tables": {},
         "s3": {},
+        "sqs": [],
     }
 
     boto3_module = types.ModuleType("boto3")
@@ -128,6 +129,8 @@ def make_fake_aws_modules():
         def _item_key_from_item(self, item: dict[str, Any]) -> tuple[str, str]:
             if "user_id" in item and "image_id" in item:
                 return (str(item["user_id"]), str(item["image_id"]))
+            if "user_id" in item and "job_id" in item:
+                return (str(item["user_id"]), str(item["job_id"]))
             if "user_id" in item:
                 return (str(item["user_id"]), "")
             raise ValueError("FakeTable only supports user_id or (user_id, image_id) keys")
@@ -135,6 +138,8 @@ def make_fake_aws_modules():
         def _item_key_from_key(self, key: dict[str, Any]) -> tuple[str, str]:
             if "user_id" in key and "image_id" in key:
                 return (str(key["user_id"]), str(key["image_id"]))
+            if "user_id" in key and "job_id" in key:
+                return (str(key["user_id"]), str(key["job_id"]))
             if "user_id" in key:
                 return (str(key["user_id"]), "")
             raise ValueError("FakeTable key requires user_id or user_id and image_id")
@@ -187,7 +192,10 @@ def make_fake_aws_modules():
             item = copy.deepcopy(self._table.get(k, {}))
             if not item:
                 item["user_id"] = k[0]
-                item["image_id"] = k[1]
+                if "image_id" in key:
+                    item["image_id"] = k[1]
+                elif "job_id" in key:
+                    item["job_id"] = k[1]
 
             expr = str(kwargs.get("UpdateExpression", "")).strip()
             names = kwargs.get("ExpressionAttributeNames", {}) or {}
@@ -277,6 +285,19 @@ def make_fake_aws_modules():
             fileobj.write(data)
             return None
 
+    class FakeSQSClient:
+        def get_queue_url(self, QueueName: str):
+            return {"QueueUrl": "https://sqs.fake.local/" + QueueName}
+
+        def send_message(self, QueueUrl: str, MessageBody: str):
+            message_id = "msg-" + uuid4().hex
+            state["sqs"].append({
+                "QueueUrl": QueueUrl,
+                "MessageBody": MessageBody,
+                "MessageId": message_id,
+            })
+            return {"MessageId": message_id}
+
     class FakeSession:
         def __init__(self, region_name: str | None = None):
             self.region_name = region_name
@@ -289,6 +310,8 @@ def make_fake_aws_modules():
         def client(self, name: str):
             if name == "s3":
                 return FakeS3Client()
+            if name == "sqs":
+                return FakeSQSClient()
             raise ValueError("unsupported client: " + name)
 
     boto3_module.Session = FakeSession
@@ -311,6 +334,7 @@ def set_env_for_test(work_dir: Path):
         "AWS_REGION": "us-west-1",
         "DYNAMODB_IMAGE_TABLE": "ImageMetadata",
         "DYNAMODB_USER_TABLE": "Users",
+        "DYNAMODB_ZIP_JOBS_TABLE": "ZipJobs",
         "S3_BUCKET": "fake-bucket",
         "DOWNLOAD_ZIP_PREFIX": "downloads",
         "LAMBDA_TIME_GUARD_SECONDS": "30",
@@ -399,6 +423,21 @@ def patch_upload_for_local(upload_module, work_dir: Path) -> None:
 
 
 def patch_class_for_local(class_module) -> None:
+    processor_module = types.ModuleType("processor")
+
+    class FakeProcessor:
+        def predict(self, img) -> str:
+            return "test-label"
+
+        def if_need_question(self, label: str) -> str:
+            return ""
+
+        def getlocation(self, img):
+            return (float("inf"), float("inf"))
+
+    processor_module.processor = FakeProcessor
+    sys.modules["processor"] = processor_module
+
     def loadimages(self, image_list: list[str]) -> list[tuple[str, Image.Image]]:
         table = class_module._image_table()
         s3 = class_module.boto3.Session(region_name=os.getenv("AWS_REGION", "us-west-1")).client("s3")
@@ -488,6 +527,19 @@ def test_full_pipeline(work_dir: Path, dataset_root: Path, image_count: int) -> 
     if len(upload_reply["images"]) != len(copied_images):
         raise AssertionError(f"upload_full image count mismatch: {upload_reply}")
     image_ids = upload_reply["images"]
+    upload_zip_jobs = fake_state["tables"].get(os.getenv("DYNAMODB_ZIP_JOBS_TABLE", "ZipJobs"), {})
+    upload_zip_job = upload_zip_jobs.get(("user1@example.com", "upload-full"))
+    if not upload_zip_job or upload_zip_job.get("status") != "complete":
+        raise AssertionError(f"upload ZipJobs status mismatch: {upload_zip_job}")
+    if upload_zip_job.get("type") != "zip_upload":
+        raise AssertionError(f"upload ZipJobs type mismatch: {upload_zip_job}")
+    if upload_reply.get("class_sqs", {}).get("count") != len(image_ids):
+        raise AssertionError(f"upload class_sqs count mismatch: {upload_reply}")
+    if len(fake_state["sqs"]) != 1:
+        raise AssertionError(f"expected one class SQS message after upload, got {fake_state['sqs']}")
+    sqs_body = json.loads(fake_state["sqs"][0]["MessageBody"])
+    if sorted(item.get("image_id") for item in sqs_body) != sorted(image_ids):
+        raise AssertionError(f"class SQS body mismatch: {sqs_body}, expected {image_ids}")
     append_txt(work_dir / "pipeline.txt", "upload " + json.dumps(upload_reply))
 
     class_event = {"task_id": "class-full", "images": image_ids}
@@ -504,8 +556,8 @@ def test_full_pipeline(work_dir: Path, dataset_root: Path, image_count: int) -> 
     table_items = fake_state["tables"].get(os.getenv("DYNAMODB_IMAGE_TABLE", "ImageMetadata"), {})
     for item in table_items.values():
         status = item.get("status")
-        if status != "done":
-            raise AssertionError(f"expected class status done, got {status}: {item}")
+        if status != "complete":
+            raise AssertionError(f"expected class status complete, got {status}: {item}")
 
     name_event = {
         "task_id": "name-full",
@@ -519,7 +571,11 @@ def test_full_pipeline(work_dir: Path, dataset_root: Path, image_count: int) -> 
         raise AssertionError(f"name_full has unfinished images: {name_reply}")
     append_txt(work_dir / "pipeline.txt", "name " + json.dumps(name_reply))
 
-    download_event = {"task_id": "download-full", "images": image_ids}
+    download_event = {
+        "user_id": "user1@example.com",
+        "job_id": "download-full",
+        "image_ids": image_ids,
+    }
     download_pro = download_module.handler(download_event, FakeContext())
     download_pro.run()
     download_reply = download_pro.reply()
@@ -549,6 +605,13 @@ def test_full_pipeline(work_dir: Path, dataset_root: Path, image_count: int) -> 
     if not user_item or user_item.get("zip_download") != dl_key:
         raise AssertionError(f"user zip_download mismatch: {user_item}, expected {dl_key}")
 
+    zip_jobs_table = fake_state["tables"].get(os.getenv("DYNAMODB_ZIP_JOBS_TABLE", "ZipJobs"), {})
+    zip_job = zip_jobs_table.get(("user1@example.com", "download-full"))
+    if not zip_job or zip_job.get("status") != "complete":
+        raise AssertionError(f"download ZipJobs status mismatch: {zip_job}")
+    if zip_job.get("result_s3_key") != dl_key:
+        raise AssertionError(f"download ZipJobs result_s3_key mismatch: {zip_job}, expected {dl_key}")
+
     return {
         "upload": upload_reply,
         "class": class_reply,
@@ -556,6 +619,9 @@ def test_full_pipeline(work_dir: Path, dataset_root: Path, image_count: int) -> 
         "download": download_reply,
         "db_rows": len(table_items),
         "user_zip_download": user_item.get("zip_download"),
+        "upload_zip_job_status": upload_zip_job.get("status"),
+        "download_zip_job_status": zip_job.get("status"),
+        "sqs_messages": len(fake_state["sqs"]),
         "s3_objects": sum(len(v) for v in fake_state["s3"].values()),
         "dataset_root": str(dataset_root),
         "image_count": len(copied_images),
@@ -582,7 +648,8 @@ def test_not_finished_semantics(work_dir: Path) -> dict[str, Any]:
     )
     class_pro.run()
     class_reply = class_pro.reply()
-    assert_ok("class_timeout", class_reply)
+    if class_reply.get("run_success"):
+        raise AssertionError(f"class timeout should not be successful: {class_reply}")
     if class_reply.get("msg") != "not finished":
         raise AssertionError(f"class timeout should be not finished: {class_reply}")
 
