@@ -353,11 +353,8 @@ class handler:
                 self.run_success = False
                 return ""
             bucket = _bucket_name()
-            key_prefix = os.getenv("DOWNLOAD_ZIP_PREFIX", "downloads").strip("/")
-            if not key_prefix:
-                key_prefix = "downloads"
-            date_part = datetime.utcnow().strftime("%Y%m%d")
-            s3_key = f"{key_prefix}/{date_part}/{self.task_id}_{uuid4().hex}.zip"
+            safe_user_id = self.user_id.replace("/", "_").replace("\\", "_") or "user"
+            s3_key = f"downlaod/{safe_user_id}_{uuid4().hex[:6]}.zip"
             zip_path = Path(zip_file)
             _s3_client().upload_file(str(zip_path), bucket, s3_key)
             self.zip_s3_key = s3_key
