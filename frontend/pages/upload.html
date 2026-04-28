@@ -26,6 +26,10 @@
                     <i class="fa-download"></i>
                     <span>DOWNLOAD</span>
                 </button>
+                <button class="nav-item" onclick="goMapView()">
+                    <i class="fa fa-mapView"></i>
+                    <span>MapView</span>
+                </button>
             </nav>
         </aside>
 
@@ -40,7 +44,7 @@
             <div class="upload-wrapper">
                 <div class="upload-dropzone" id="dropzone">
                     <p>Upload your photo here ...</p>
-                    <input type="file" id="fileInput" multiple accept="image/*">
+                    <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.zip">
                 </div>
                 <div class="upload-queue">
                     <h3>Upload List</h3>
@@ -51,8 +55,6 @@
         </main>
     </div>
 
-    <script src="../static/js/test_phototData.js"></script>
-    <script src="../static/js/test_dataservice.js"></script>
     <script src="../static/js/upload.js"></script>
 </body>
 </html>

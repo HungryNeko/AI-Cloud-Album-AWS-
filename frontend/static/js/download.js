@@ -1,17 +1,9 @@
-// test image
-// const mockPhotos = [
-//     { id: 1, url: "https://picsum.photos/seed/photo1/400/400", name: "photo1.jpg" },
-//     { id: 2, url: "https://picsum.photos/seed/photo2/400/400", name: "photo2.jpg" },
-//     { id: 3, url: "https://picsum.photos/seed/photo3/400/400", name: "photo3.jpg" },
-//     { id: 4, url: "https://picsum.photos/seed/photo4/400/400", name: "photo4.jpg" },
-//     { id: 5, url: "https://picsum.photos/seed/photo5/400/400", name: "photo5.jpg" },
-//     { id: 6, url: "https://picsum.photos/seed/photo6/400/400", name: "photo6.jpg" },
-// ];
-let mockPhotos = [];
+let photos = [];
+const BASE_URL = "http://18.145.174.39";
 
 window.onload = async function () {
     if (!localStorage.getItem("token")) {
-        location.href = "/pages/login.html";
+        location.href = "/login.html";
         return;
     }
 
@@ -19,102 +11,160 @@ window.onload = async function () {
     document.getElementById("userName").innerText = "Hello, " + username;
     localStorage.removeItem("photos");
 
-    mockPhotos = await DataService.getPhotos();
-    renderImageGrid();
+    await loadImageList();
 };
 
-function renderImageGrid() {
+
+async function getPresignedUrl(s3_key) {
+  try{
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${BASE_URL}/api/utils/presigned-url`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        s3_key: s3_key
+      })
+    });
+    const data = await res.json();
+    if(data.success && data.data?.url){
+      return data.data.url;
+    }
+  }catch (e){
+    console.error("Fail to get photos", e);
+  }
+  return "";
+}
+
+async function loadImageList() {
+    try {
+        const res = await fetch(BASE_URL + "/api/images", {
+            headers: {
+                "Authorization": "Bearer " + localStorage.getItem("token")
+            }
+        });
+        const data = await res.json();
+        if (data.success) {
+            photos = data.data;
+            renderImageGrid(photos);
+        }
+    } catch(err) {
+        console.error("Load images error", err);
+        alert("Failed to load image");
+    }
+}
+
+async function renderImageGrid(photos) {
     const grid = document.getElementById("imageGrid");
     grid.innerHTML = "";
 
-    mockPhotos.forEach(photo => {
+    for (const photo of photos) {
         const card = document.createElement("div");
+        const imgUrl = await getPresignedUrl(photo.s3_key);
         card.className = "image-card";
-        card.dataset.id = photo.id;
-        card.dataset.url = photo.url;
-        card.dataset.name = photo.name;
-
-        // card.innerHTML = `
-        //     <div class="checkbox-wrapper">
-        //         <input type="checkbox" class="photo-checkbox">
-        //         <span class="checkmark">✓</span>
-        //     </div>
-        //     <img src="${photo.url}" alt="${photo.name}">
-        // `;
-
-        // card.addEventListener("click", (e) => {
-        //     const checkbox = card.querySelector(".photo-checkbox");
-        //     checkbox.checked = !checkbox.checked;
-        //     card.classList.toggle("selected", checkbox.checked);
-        // });
-
         card.innerHTML = `
         <input 
         type="checkbox" 
         class="download-checkbox"
-        value="${photo.id}"
+        value="${photo.image_id}"
         style="position:absolute; top:8px; right:8px; width:22px; height:22px; z-index:10;">
-        <img src="${photo.url}" alt="photo" style="width:100%; height:100%; object-fit:cover;">
+        <img src="${imgUrl}" alt="photo" style="width:100%; height:100%; object-fit:cover;">
         `;
 
         grid.appendChild(card);
-    });
+    }
 }
 
 function getSelectedPhotos() {
     const selected = [];
-    // document.querySelectorAll(".image-card.selected").forEach(card => {
-    //     selected.push({
-    //         id: card.dataset.id,
-    //         url: card.dataset.url,
-    //         name: card.dataset.name
-    //     });
-    // });
+
     document.querySelectorAll(".download-checkbox:checked").forEach(cb => {
-        selected.push(Number(cb.value));
+        selected.push(cb.value);
     });
     return selected;
 }
 
-function BatchDownload() {
+
+async function createDownloadJob(imageIds) {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${BASE_URL}/api/images/download`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ image_ids: imageIds })
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message);
+  return data.data.job_id;
+}
+
+
+async function pollDownloadStatus(jobId) {
+  const token = localStorage.getItem("token");
+  const pollInterval = 1000;
+  const maxRetries = 30;
+
+  for (let i = 0; i < maxRetries; i++) {
+    const res = await fetch(`${BASE_URL}/api/jobs/${jobId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await res.json();
+
+    if (data.success && data.data.status === "complete") {
+      const res_s3_key = data.data.result_s3_key;
+      const zipUrl = await getPresignedUrl(res_s3_key);
+      return zipUrl;
+    }
+    if (data.data.status === "failed") {
+      throw new Error("Fail to download");
+    }
+
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
+  }
+  throw new Error("Download over time limit");
+}
+
+function triggerDownload(zipUrl) {  
+  const a = document.createElement("a");
+  a.href = zipUrl;
+  a.download = 'album_images.zip';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+
+async function BatchDownload() {
     const selected = getSelectedPhotos();
 
     if (selected.length === 0) {
-        alert("Empty !");
+        alert("No photo selected!");
         return;
     }
 
-    // Replace here. Call download function
-    /*
-    fetch("/your-backend-api/download/batch", {
-        method: "POST",
-        body: JSON.stringify({ ids: selected.map(p => p.id) })
-    })
-    .then(res => res.blob())
-    .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "album_files.zip";
-        a.click();
-        window.URL.revokeObjectURL(url);
-    });
-    */
+    console.log("selected", selected);
 
-    // Replace here, simulate download(open the file directly)
-    selected.forEach(photo => {
-        const link = document.createElement("a");
-        link.href = photo.url;
-        link.download = photo.name;
-        link.target = "_blank";
-        link.click();
-    });
+    const token = localStorage.getItem("token");
+    try {
+        const jobId = await createDownloadJob(selected);
+        const zipUrl = await pollDownloadStatus(jobId);
+        triggerDownload(zipUrl)
+
+    } catch (err) {
+        console.error(err);
+        alert("Download failed, please try again.");
+    }
 }
 
 // Navigation
 function goHome() { location.href = "index.html"; }
 function goUpload() { location.href = "upload.html"; }
 function goDownload() { location.href = "download.html"; }
+function goMapView() {  location.href = "/mapView.html";  }
 function logout() {
     localStorage.clear();
     location.href = "pages/login.html";

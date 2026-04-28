@@ -19,8 +19,8 @@ const PHOTO_DATA = [
     "id": 3,
     "url": "https://picsum.photos/id/169/600/600",
     "label": "dog",
-    "lat": 40.5431,
-    "lng": -114.0579,
+    "lat": 37.5431,
+    "lng": -122.2579,
     "name": ""
   },
   {

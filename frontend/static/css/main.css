@@ -15,11 +15,16 @@ body {
 }
 
 .sidebar {
-    width: 200px;
+    width: 230px;
     background: #ffffff;
     box-shadow: 2px 0 5px rgba(0,0,0,0.05);
     display: flex;
     flex-direction: column;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -34,6 +39,7 @@ body {
 
 .sidebar-nav {
     padding: 10px 0;
+    flex: 1;
 }
 
 .nav-item {
@@ -68,6 +74,8 @@ body {
     display: flex;
     flex-direction: column;
     overflow: auto;
+    margin-left: 230px;
+    margin-top: 62px;   
 }
 
 .top-header {
@@ -77,6 +85,11 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 230px;
+    right: 0;
+    z-index: 99;
 }
 
 .user-area {
@@ -108,7 +121,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1500px;
     margin: 20px 0;
     padding: 0 16px;
 }
@@ -116,7 +129,7 @@ body {
 .album {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
+    gap: 10px;
 }
 
 .photo-item {
@@ -141,13 +154,17 @@ body {
 }
 
 .del-btn {
+    flex: 1;
     padding: 10px;
     width: 30%;
     background: #007bff;
     color: white;
     border: none;
     border-radius: 20px;
-    font-size: 14px;
+    font-size: 12px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
 }
 
 .delmode-btn {
@@ -159,4 +176,6 @@ body {
     border: none;
     border-radius: 20px;
     font-size: 14px;
+    margin: 0 auto 20px auto;
+    cursor: pointer;
 }
