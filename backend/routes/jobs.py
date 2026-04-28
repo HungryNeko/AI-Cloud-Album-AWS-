@@ -1,4 +1,4 @@
-from flask import Blueprint, request, g
+from flask import Blueprint, g
 from utils.jwt_utils import login_required
 from services.db_service import get_job_record, list_jobs_by_user
 

@@ -5,6 +5,8 @@ from routes.auth import auth_bp
 from routes.images import images_bp
 from routes.jobs import jobs_bp
 from routes.utils import utils_bp
+from routes.map import map_bp
+from routes.collections import collections_bp
 
 def create_app():
     app = Flask(__name__)
@@ -22,6 +24,8 @@ def create_app():
     app.register_blueprint(images_bp, url_prefix="/api/images")
     app.register_blueprint(jobs_bp, url_prefix="/api/jobs")
     app.register_blueprint(utils_bp, url_prefix="/api/utils")
+    app.register_blueprint(map_bp, url_prefix="/api/map")
+    app.register_blueprint(collections_bp, url_prefix="/api/collections")
 
     @app.get("/health")
     def health():

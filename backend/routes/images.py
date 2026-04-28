@@ -1,6 +1,6 @@
 from flask import Blueprint, request, g
 from utils.jwt_utils import login_required
-from services.image_service import create_upload_job, create_upload_zip_job, create_download_job
+from services.image_service import create_upload_job, create_upload_zip_job, create_download_job, search_images
 from services.db_service import get_image_record, list_images_by_user, add_followup_answer
 
 images_bp = Blueprint("images", __name__)
@@ -98,3 +98,9 @@ def download():
         "message": "download job created",
         "data": result["data"]
     }, 201
+
+@images_bp.route("/search", methods=["GET"])
+@login_required
+def search():
+    items = search_images(request.args, g.user_id)
+    return {"success": True, "data": items}, 200

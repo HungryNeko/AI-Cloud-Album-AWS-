@@ -331,6 +331,58 @@ Error
 }
 ```
 
+### 3.8 Search Images
+
+GET `/api/images/search`
+
+Query Parameters:
+
+| Parameter | Type   | Required | Description                       |
+| --------- | ------ | -------- | --------------------------------- |
+| q         | string | optional | Search keywords (space-separated) |
+
+Example Request
+
+```
+GET /api/images/search?q=dog
+GET /api/images/search?q=dog tom
+```
+
+Response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "image_id": "img_001",
+      "label": "dog",
+      "s3_key": "user_123/img_001/dog.jpg"
+    },
+    {
+      "image_id": "img_002",
+      "label": "dog",
+      "s3_key": "user_123/img_002/dog2.jpg"
+    }
+  ]
+}
+```
+
+##### No Query
+
+```
+GET /api/images/search
+```
+
+Returns:
+
+```json
+{
+  "success": true,
+  "data": []
+}
+```
+
 ## 4. Job APIs
 
 ### 4.1 Get Job
@@ -401,9 +453,63 @@ Response
 
 GET `/api/collections/`
 
+Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "by_label": [
+      {
+        "label": "cat",
+        "count": 2,
+        "images": [
+          {
+            "image_id": "img_001",
+            "s3_key": "user_123/img_001/cat.jpg"
+          }
+        ]
+      }
+    ],
+    "by_location": [
+      {
+        "location": "34.02, -118.28",
+        "count": 3,
+        "images": [
+          {
+            "image_id": "img_002",
+            "s3_key": "user_123/img_002/dog.jpg"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
 ### 5.2 Map Points
 
 GET `/api/map/points`
+
+Response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "image_id": "img_001",
+      "lat": 34.0224,
+      "lng": -118.2851
+    },
+    {
+      "image_id": "img_002",
+      "lat": 34.01,
+      "lng": -118.28
+    }
+  ]
+}
+```
 
 ## 6. Utility APIs
 

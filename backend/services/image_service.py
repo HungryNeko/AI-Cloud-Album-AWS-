@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from services.storage_service import upload_file_to_s3
 from services.queue_service import send_job_to_sqs_image, send_job_to_sqs_zip_upload, send_job_to_sqs_download
-from services.db_service import create_image_record, update_image_status, create_job_record, update_job_status
+from services.db_service import create_image_record, update_image_status, create_job_record, update_job_status, list_images_by_user
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
@@ -140,3 +140,36 @@ def create_download_job(image_ids, user_id: str):
             "status": "processing"
         }
     }
+
+
+def search_images(params, user_id):
+    items = list_images_by_user(user_id)
+
+    q = (params.get("q") or "").strip().lower()
+    if not q:
+        return []
+
+    keywords = [k for k in q.split() if k]
+
+    results = []
+    for item in items:
+        texts = []
+
+        label = item.get("label")
+        if label:
+            texts.append(label)
+
+        answers = item.get("followup_answers", [])
+        for ans in answers:
+            texts.append(str(ans))
+
+        combined = " ".join(texts).lower()
+
+        if all(k in combined for k in keywords):
+            results.append({
+                "image_id": item.get("image_id"),
+                "label": item.get("label"),
+                "s3_key": item.get("s3_key")
+            })
+
+    return results
