@@ -383,6 +383,32 @@ Returns:
 }
 ```
 
+### 3.9 Delete Image (Soft Delete)
+
+DELETE `/api/images/{image_id}`
+
+Response
+
+```json
+{
+  "success": true,
+  "message": "deleted",
+  "data": {
+    "image_id": "img_001"
+  }
+}
+```
+
+Error
+
+```json
+{
+  "success": false,
+  "message": "invalid image_id"
+}
+
+```
+
 ## 4. Job APIs
 
 ### 4.1 Get Job
@@ -551,7 +577,7 @@ Error
 
 The image status uniformly uses the following values:
 
-`uploaded`, `processing`, `needs_followup`, `complete`, `failed`
+`uploaded`, `processing`, `needs_followup`, `complete`, `failed`, `deleted`
 
 ## 8. Frontend Flow
 

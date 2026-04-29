@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5000/api/auth";
+const BASE_URL = "http://18.145.174.39";
 
 // swith between sheets
 function switchToRegister() {
@@ -25,47 +25,62 @@ function saveToken(token) {
 
 // register
 async function register() {
-    const username = document.getElementById("reg_username").value;
+    const useremail = document.getElementById("reg_useremail").value;
     const password = document.getElementById("reg_userpassword").value;
 
     try {
-        const res = await fetch(`${BASE_URL}/register`, {
+        const res = await fetch(BASE_URL + "/api/auth/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({"email": useremail,"password": password })
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.msg || "Register failed");
-
-        showMsg("Register success! Please login.");
-        switchToLogin();
+        if (data.success) {
+            alert("Register success!");
+            window.location.href = '/login.html';
+        } else {
+            alert("Register failed: " + data.message);
+            return;
+        }
     } catch (err) {
-        showMsg(err.message);
+        console.error(err);
+        alert("Network error, please try again later")
     }
 }
 
 // login
 async function login() {
-    const username = document.getElementById("username").value;
+    const email = document.getElementById("useremail").value;
     const password = document.getElementById("userpassword").value;
 
     try {
-        const res = await fetch(`${BASE_URL}/login`, {
+        const res = await fetch(BASE_URL + "/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ email, password })
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.msg || "Login failed");
+        if (data.success) {
+            localStorage.setItem("token", data.data.token);
+            localStorage.setItem("user_id", data.data.user_id);
+            localStorage.setItem("username", email);
+            alert("Login Success!");
+            window.location.herf = '/index.html';
+        }
+        else {
+            alert("Login Failed: " + data.message);
+            return;
+        }
 
         // save JWT
-        saveToken(data.token);
-        localStorage.setItem("username", username)
-        showMsg("Login success!");
+        // saveToken(data.token);
+        // localStorage.setItem("username", email)
+        // showMsg("Login success!");
         setTimeout(() => location.href = "index.html", 1000);
     } catch (err) {
-        showMsg(err.message);
+        console.error(err);
+        alert("Network error, please try again later");
     }
 }

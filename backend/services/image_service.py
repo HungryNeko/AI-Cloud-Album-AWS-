@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from services.storage_service import upload_file_to_s3
 from services.queue_service import send_job_to_sqs_image, send_job_to_sqs_zip_upload, send_job_to_sqs_download
-from services.db_service import create_image_record, update_image_status, create_job_record, update_job_status, list_images_by_user
+from services.db_service import create_image_record, update_image_status, create_job_record, update_job_status, get_image_record, list_images_by_user
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
@@ -173,3 +173,19 @@ def search_images(params, user_id):
             })
 
     return results
+
+
+def delete_image_record(user_id, image_id):
+    item = get_image_record(user_id, image_id)
+
+    if not item:
+        return {"ok": False, "message": "invalid image_id"}
+
+    update_image_status(user_id, image_id, "deleted")
+
+    return {
+        "ok": True,
+        "data": {
+            "image_id": image_id
+        }
+    }

@@ -26,7 +26,16 @@
                     <i class="fa fa-download"></i>
                     <span>DOWNLOAD</span>
                 </button>
+                <button class="nav-item" onclick="goMapView()">
+                    <i class="fa fa-mapView"></i>
+                    <span>MapView</span>
+                </button>
             </nav>
+            <button class="delmode-btn" id="deletemode_btn" onclick="enterDeleteMode()" style="margin-top: 20px; padding: 10px 24px;">Delete</button>
+            <div id="deleteBar" class="del-bar" style="display: none; margin-top: 30px; text-align: center;">
+                <button class="del-btn" onclick="cancelDelete()" style="margin: 10px; padding: 8px 16px;">Cancel</button>
+                <button class="del-btn" onclick="confirmDelete()" style="margin: 10px; padding: 8px 16px;">Confirm</button>
+            </div>
         </aside>
 
         <!-- Main Content -->
@@ -46,16 +55,10 @@
             <div class="container">
                 <div class="album" id="album"></div>
             </div>
-            <div id="deleteBar" class="del-bar" style="display: none; margin-top: 30px; text-align: center;">
-                <button class="del-btn" onclick="cancelDelete()" style="margin: 10px; padding: 8px 16px;">Cancel</button>
-                <button class="del-btn" onclick="confirmDelete()" style="margin: 10px; padding: 8px 16px;">Confirm</button>
-            </div>
-            <button class="delmode-btn" id="deletemode_btn" onclick="enterDeleteMode()" style="margin-top: 20px; padding: 10px 24px;">Delete</button>
+            
         </main>
     </div>
 
-    <script src="../static/js/test_phototData.js"></script>
-    <script src="../static/js/test_dataservice.js"></script>
     <script src="../static/js/main.js"></script>
 </body>
 </html>

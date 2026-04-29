@@ -1,10 +1,12 @@
 let selectedFiles = [];
+const BASE_URL = "http://18.145.174.39";
 
 window.onload = function () {
     if (!localStorage.getItem("token")) {
-        location.href = "/pages/login.html";
+        location.href = "/login.html";
         return;
     }
+    const token = localStorage.getItem("token");
     const username = localStorage.getItem("username") || "User";
     document.getElementById("userName").innerText = "Hello, " + username;
     const dropzone = document.getElementById("dropzone");
@@ -46,40 +48,93 @@ function removeFile(index) {
     renderFileList();
 }
 
+
+function getFileSuffix(filename) {
+    return filename.split('.').pop().toLowerCase();
+}
+
 // Batch upload
 async function startUpload() {
     if (selectedFiles.length === 0) {
         alert("Can't upload empty file");
         return;
     }
-    // Need replacement, call backend upload
-    for (let file of selectedFiles) {
-    let url = URL.createObjectURL(file);
-    await DataService.addPhoto({
-      url: url,
-      label: "unknown",
-      lat: 39.9,
-      lng: 116.3,
-      name: ""
-    });
-  }
 
-    alert(`Uploading ${selectedFiles.length} File`);
+    const token = localStorage.getItem("token");
+    const IMAGE_SUFFIX = ['jpg', 'jpeg', 'png'];
+    const ZIP_SUFFIX = ['zip'];
+
+    try{
+        for (const file of selectedFiles){
+            const suffix = getFileSuffix(file.name);
+            if(IMAGE_SUFFIX.includes(suffix)){
+                await uploadSingle(file, token);
+            }else if (ZIP_SUFFIX.includes(suffix)){
+                await uploadZip(file, token);
+            }else{
+                alert(`Unsupported file format: ${file.name}`);
+            }
+        }
+
+        alert("Upload Complete");
+        selectedFiles = [];
+        renderFileList();
+    } catch(err){
+        console.error(err);
+        alert("Upload Failed: Network error ...")
+    }
+
     selectedFiles = [];
     renderFileList();
 }
 
+
+async function uploadSingle(file, token) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(BASE_URL + "/api/images/upload", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        },
+        body: formData
+    });
+    const data = await res.json();
+    if(!data.success) {
+        throw new Error(data.message || "Upload Failed");
+    }
+}
+
+
+async function uploadZip(file, token) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(BASE_URL + "/api/images/upload-zip", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        },
+        body: formData
+    });
+    const data = await res.json();
+    if (!data.success) {
+        throw new Error(data.message || "Upload Failed");
+    }
+}
+
 // Nvigation
 function goHome() {
-    location.href = "/pages/index.html";
+    location.href = "/index.html";
 }
 function goUpload() {
-    location.href = "/pages/upload.html";
+    location.href = "/upload.html";
 }
 function goDownload() {
-    location.href = "/pages/download.html"
+    location.href = "/download.html";
 }
+function goMapView() {  location.href = "/mapView.html";  }
 function logout() {
     localStorage.clear();
-    location.href = "/pages/login.html";
+    location.href = "/login.html";
 }

@@ -62,7 +62,11 @@ def list_images_by_user(user_id: str):
         KeyConditionExpression="user_id = :u",
         ExpressionAttributeValues={":u": user_id}
     )
-    return resp.get("Items", [])
+    items = resp.get("Items", [])
+    return [
+        item for item in items
+        if item.get("status") != "deleted"
+    ]
 
 def update_image_status(user_id: str, image_id: str, status: str):
     _image_table().update_item(

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, g
 from utils.jwt_utils import login_required
-from services.image_service import create_upload_job, create_upload_zip_job, create_download_job, search_images
+from services.image_service import create_upload_job, create_upload_zip_job, create_download_job, search_images, delete_image_record
 from services.db_service import get_image_record, list_images_by_user, add_followup_answer
 
 images_bp = Blueprint("images", __name__)
@@ -104,3 +104,15 @@ def download():
 def search():
     items = search_images(request.args, g.user_id)
     return {"success": True, "data": items}, 200
+
+@images_bp.route("/<image_id>", methods=["DELETE"])
+@login_required
+def delete_image(image_id):
+    result = delete_image_record(g.user_id, image_id)
+    if not result["ok"]:
+        return {"success": False, "message": result["message"]}, 400
+    return {
+        "success": True,
+        "message": "deleted",
+        "data": result["data"]
+    }, 200
