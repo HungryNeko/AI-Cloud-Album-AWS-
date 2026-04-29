@@ -364,34 +364,6 @@ class handler:
             self.run_success = False
             return ""
 
-    def write_user_download_key(self) -> bool:
-        try:
-            if not self.has_enough_time():
-                self.msg = "Error when writing to user database: not enough remaining time"
-                self.run_success = False
-                return False
-            if not self.zip_s3_key:
-                raise ValueError("zip_s3_key is empty")
-            if not self.user_ids:
-                raise ValueError("user_id not found for download task")
-            table = _user_table()
-            now = datetime.utcnow().isoformat()
-            for user_id in sorted(self.user_ids):
-                table.update_item(
-                    Key={"user_id": user_id},
-                    UpdateExpression="SET zip_download = :z, updated_at = :t",
-                    ConditionExpression="attribute_exists(user_id)",
-                    ExpressionAttributeValues={
-                        ":z": self.zip_s3_key,
-                        ":t": now,
-                    },
-                )
-            return True
-        except Exception as e:
-            self.msg = "Error when writing to user database: " + str(e)
-            self.run_success = False
-            return False
-
     def process(self) -> None:
         if not self.has_enough_time():
             self.msg = "Error when processing: not enough remaining time"
@@ -424,8 +396,6 @@ class handler:
         if not self.has_enough_time():
             self.msg = "Error when processing: not enough remaining time"
             self.run_success = False
-            return
-        if not self.write_user_download_key():
             return
         if not self.write_zip_job("complete", self.zip_s3_key):
             return
