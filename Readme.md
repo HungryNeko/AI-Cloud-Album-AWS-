@@ -27,7 +27,8 @@
 #### Note
 - "name" lambda is Not used.  
 - "test" lambda is not in running system, just for test other lambda input output and check S3 and Database.
-- Unable to running localy.  
+- Unable to running localy.
+- ML is in "class" lambda with ONNX.
 
 #### Upload and Environment  
 - "download" and "upload" and "test" can directly copy to AWS lambda, use python 3.14.
