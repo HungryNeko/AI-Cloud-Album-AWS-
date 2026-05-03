@@ -1,8 +1,10 @@
 # AI Cloud Album
 
-AI Cloud Album is a cloud-based image management system that enables users to upload, process, organize, and retrieve images using a scalable AWS-based architecture.
+**Author**: HungryNeko
 
-The system integrates REST APIs, asynchronous processing, cloud storage, and machine learning to provide efficient image management and exploration.
+AI Cloud Album is a cloud-native, event-driven image management system designed to handle large-scale image storage and processing.
+
+The system integrates REST APIs with AWS services including S3, DynamoDB, SQS, and Lambda to build a fully asynchronous processing pipeline. Machine learning (YOLOv8) is used for automatic image classification, enabling intelligent organization and retrieval of images.
 
 ## Major Files and Directories in the Repository
 
@@ -181,7 +183,7 @@ Each Lambda function should be configured with only the environment variables it
 
 Some functions may share:
 
-```
+```env
 AWS_REGION=us-west-1
 S3_BUCKET=your_s3_bucket_name
 ```
@@ -190,7 +192,7 @@ S3_BUCKET=your_s3_bucket_name
 
 Used for image processing and metadata lookup:
 
-```
+```env
 AWS_REGION=us-west-1
 S3_BUCKET=your_s3_bucket_name
 DYNAMODB_USER_TABLE=Users
@@ -202,7 +204,7 @@ LAMBDA_TIME_GUARD_SECONDS=30
 
 Used for extracting uploaded ZIP files and triggering image processing:
 
-```
+```env
 AWS_REGION=us-west-1
 S3_BUCKET=your_s3_bucket_name
 DYNAMODB_IMAGE_TABLE=ImageMetadata
@@ -214,7 +216,7 @@ SQS_IMAGE_PROCESSING_URL=your_image_processing_queue_url
 
 Used for packaging selected images into a ZIP file:
 
-```
+```env
 AWS_REGION=us-west-1
 S3_BUCKET=your_s3_bucket_name
 DYNAMODB_IMAGE_TABLE=ImageMetadata
@@ -225,7 +227,7 @@ DYNAMODB_ZIP_JOBS_TABLE=ZipJobs
 
 This function is intended for development or debugging.
 
-```
+```env
 
 ```
 
