@@ -179,3 +179,9 @@ body {
     margin: 0 auto 20px auto;
     cursor: pointer;
 }
+
+button:disabled {
+  background: #ccc !important;
+  cursor: not-allowed !important;
+  opacity: 0.8;
+}

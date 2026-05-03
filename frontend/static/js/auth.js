@@ -28,6 +28,11 @@ async function register() {
     const useremail = document.getElementById("reg_useremail").value;
     const password = document.getElementById("reg_userpassword").value;
 
+    if(!isValidEmail(useremail)) {
+        alert("Please enter valid email address!");
+        return;
+    }
+
     try {
         const res = await fetch(BASE_URL + "/api/auth/register", {
             method: "POST",
@@ -48,6 +53,13 @@ async function register() {
         alert("Network error, please try again later")
     }
 }
+
+
+function isValidEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
 
 // login
 async function login() {

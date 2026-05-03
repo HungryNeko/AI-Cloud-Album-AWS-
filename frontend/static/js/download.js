@@ -77,6 +77,54 @@ async function renderImageGrid(photos) {
     }
 }
 
+
+async function searchPhotos() {
+    const key = document.getElementById("searchInput").value.toLowerCase().trim();
+
+    if (!key) {
+        renderImageGrid(photos);
+        return;
+    }
+    let filtered = photos.filter(p => {
+        const label = (p.label || "").toLowerCase();
+        return label.includes(key);
+    });
+    const token = localStorage.getItem("token");
+    const finalFiltered = [];
+
+    for (const p of photos) {
+        const label = (p.label || "").toLowerCase();
+        const labelMatch = label.includes(key);
+        let followupMatch = false;
+        if (!labelMatch) {
+            try {
+                const res = await fetch(`${BASE_URL}/api/images/${p.image_id}`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                const data = await res.json();
+                if (data.success && data.data.followup_answers) {
+                     const answers = data.data.followup_answers.map(obj => {
+            if (!obj) return "";
+            const firstValue = Object.values(obj)[0] || "";
+            return firstValue.toString().toLowerCase();
+          });
+                    followupMatch = answers.some(ans => ans.includes(key));
+                }
+            } catch (e) {
+                console.error("Failed to load detail for search", e);
+            }
+        }
+        if (labelMatch || followupMatch) {
+            finalFiltered.push(p);
+        }
+    }
+
+    renderImageGrid(finalFiltered);
+}
+
+
 function getSelectedPhotos() {
     const selected = [];
 
@@ -145,6 +193,9 @@ async function BatchDownload() {
         alert("No photo selected!");
         return;
     }
+    const btn = document.getElementById("downloadBtn");
+    btn.disabled = true;
+    btn.innerText = "Downloading ...";
 
     console.log("selected", selected);
 
@@ -158,6 +209,8 @@ async function BatchDownload() {
         console.error(err);
         alert("Download failed, please try again.");
     }
+    btn.disabled = false;
+    btn.innerText = "Download";
 }
 
 // Navigation

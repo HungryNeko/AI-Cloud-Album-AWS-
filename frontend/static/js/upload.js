@@ -63,6 +63,10 @@ async function startUpload() {
     const token = localStorage.getItem("token");
     const IMAGE_SUFFIX = ['jpg', 'jpeg', 'png'];
     const ZIP_SUFFIX = ['zip'];
+    const btn = document.getElementById("uploadBtn");
+
+    btn.disabled = true;
+    btn.innerText = "Uploading ...";
 
     try{
         for (const file of selectedFiles){
@@ -85,6 +89,8 @@ async function startUpload() {
     }
 
     selectedFiles = [];
+    btn.disabled = false;
+    btn.innerText = "Upload";
     renderFileList();
 }
 
