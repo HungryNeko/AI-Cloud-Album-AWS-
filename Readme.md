@@ -8,11 +8,9 @@
 
 ### frontend
 - sources
-- docker
 
 ### lambda
 - sources
-- docker
 
 ### docs
 - api-design
@@ -20,8 +18,25 @@
 - ...
 
 ### data
-- images
-- database
+- images, a zip file that can directly used to test upload.
+
+## Setup, Environment and deployment 
+### frontend  
+### backend  
+### lambda  
+#### Note
+- "name" lambda is Not used.  
+- "test" lambda is not in running system, just for test other lambda input output and check S3 and Database.
+- Unable to running localy.
+- ML is in "class" lambda with ONNX.
+
+#### Upload and Environment  
+- "download" and "upload" and "test" can directly copy to AWS lambda, use python 3.14.
+- "class" needs to zip and upload to AWS S3 for lambda upload.
+#### Deployment
+- Connet "Upload", "class", "download" lambda to specified SQSs in AWS accorfing to Back end.  
+- Timeout set to 15mines, Memory set to 512M.  
+- Each SQS message only triggar exactly ONE lambda.  
 
 ## Team Responsibilities
 

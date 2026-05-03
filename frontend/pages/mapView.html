@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Map View</title>
+  <link rel="stylesheet" href="../static/lib/leaflet/leaflet.css">
+  <link rel="stylesheet" href="../static/css/mapView.css">
+  <link rel="stylesheet" href="../static/css/main.css">
+</head>
+
+<body>
+    <div class="layout-container">
+        <!-- Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>AI Album</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item" onclick="goHome()">
+                    <i class="fa fa-home"></i>
+                    <span>HOME</span>
+                </button>
+                <button class="nav-item" onclick="goUpload()">
+                    <i class="fa fa-upload"></i>
+                    <span>UPLOAD</span>
+                </button>
+                <button class="nav-item" onclick="goDownload()">
+                    <i class="fa fa-download"></i>
+                    <span>DOWNLOAD</span>
+                </button>
+                <button class="nav-item active" onclick="goMapView()">
+                    <i class="fa fa-mapView"></i>
+                    <span>MapView</span>
+                </button>
+            </nav>
+        </aside>
+
+       <main class="main-content">
+            <header class="top-header" style="height: 62px;">
+                <div class="user-area">
+                    <span id="userName" style="margin-right: 16px; font-size: 15px; color: #333;"></span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="map-box">
+                <div id="map"></div>
+            </div>
+        </main>
+    </div>
+  <script src="../static/lib/leaflet/leaflet.js"></script>
+  <script src="../static/js/mapView.js"></script>
+</body>
+</html>
