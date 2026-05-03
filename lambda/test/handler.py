@@ -412,15 +412,6 @@ def _read_zip_job(user_id, job_id):
     ).get("Item", {})
 
 
-def _read_user(user_id):
-    if not user_id:
-        return {}
-    return _user_table().get_item(
-        Key={"user_id": user_id},
-        ConsistentRead=True,
-    ).get("Item", {})
-
-
 def _scan_user_images(user_id, max_pages=20):
     table = _image_table()
     images = []
@@ -591,7 +582,6 @@ def _handle_flow_check_upload_class_send_download(payload):
 def _handle_flow_check_download(payload):
     flow = _flow_defaults(payload)
     download_job = _read_zip_job(flow["user_id"], flow["download_job_id"])
-    user = _read_user(flow["user_id"])
     result_s3_key = str(download_job.get("result_s3_key", ""))
     s3_exists = False
     if result_s3_key:
@@ -600,15 +590,12 @@ def _handle_flow_check_download(payload):
             s3_exists = True
         except Exception:
             s3_exists = False
-    user_zip_download = str(user.get("zip_download", ""))
     return {
         "flow": flow,
         "download_job": download_job,
-        "user_zip_download": user_zip_download,
         "checks": {
             "download_job_complete": download_job.get("status") == "complete",
             "result_s3_key_written": bool(result_s3_key),
-            "user_zip_download_matches": bool(result_s3_key) and user_zip_download == result_s3_key,
             "result_s3_object_exists": s3_exists,
         },
     }
