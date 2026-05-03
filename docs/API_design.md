@@ -583,7 +583,7 @@ The ZIP job status uniformly uses the following values:
 
 ## 8. Frontend Flow
 
-##### Upload Process:
+##### Upload Process
 
 1. Login and get token
 2. `POST /api/images/upload`
@@ -594,7 +594,7 @@ The ZIP job status uniformly uses the following values:
 7. Get s3_key `GET /api/images/{image_id}`
 7. Get URL `POST /api/utils/presigned-url` to show image
 
-##### Download Process:
+##### Download Process
 
 1. Login and get token
 2. Select images
