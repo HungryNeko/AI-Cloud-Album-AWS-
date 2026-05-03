@@ -271,8 +271,6 @@ Response
 
 GET `/api/images`
 
-Query Params (optional): `status`, `label`, `location`, `page`, `limit`
-
 Response
 
 ```json
@@ -579,9 +577,13 @@ The image status uniformly uses the following values:
 
 `uploaded`, `processing`, `needs_followup`, `complete`, `failed`, `deleted`
 
+The ZIP job status uniformly uses the following values:
+
+`uploaded`, `processing`, `complete`, `failed`
+
 ## 8. Frontend Flow
 
-##### Upload Process
+##### Upload Process:
 
 1. Login and get token
 2. `POST /api/images/upload`
@@ -592,7 +594,7 @@ The image status uniformly uses the following values:
 7. Get s3_key `GET /api/images/{image_id}`
 7. Get URL `POST /api/utils/presigned-url` to show image
 
-##### Download Process
+##### Download Process:
 
 1. Login and get token
 2. Select images
@@ -608,4 +610,5 @@ The image status uniformly uses the following values:
 - `403 Forbidden`
 - `404 Not Found`
 - `409 Conflict`
+- `413 Payload Too Large`
 - `500 Internal Server Error`
