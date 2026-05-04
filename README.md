@@ -275,7 +275,9 @@ sudo docker build -t ai-album-backend .
 sudo docker run -d -p 80:8000 --name backend --env-file .env ai-album-backend
 ```
 
-This setup assumes that the Dockerfile exposes the backend application on port `8000` inside the container and maps it to port `80` on the EC2 host.
+This setup assumes that the Dockerfile exposes the backend application on port `8000` inside the container and maps it to port `80` on the EC2 host. 
+
+The deployment can be verified by accessing the `/health` endpoint to confirm that the backend service is running correctly.
 
 #### Frontend Deployment
 
@@ -321,3 +323,13 @@ Use CloudWatch to:
 
 - view Lambda logs
 - debug async processing issues
+
+## Live Demo
+
+Frontend:
+http://ee547-project-group5-ai-cloud-album-frontend.s3-website-us-west-1.amazonaws.com
+
+Backend API:
+http://18.145.174.39
+
+Note: The system uses HTTP in the current deployment. HTTPS can be enabled in production.
