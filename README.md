@@ -179,15 +179,6 @@ Do not commit `.env` or any credential files to the repository.
 
 Each Lambda function should be configured with only the environment variables it needs. The exact variables may differ by function.
 
-##### Common variables
-
-Some functions may share:
-
-```env
-AWS_REGION=us-west-1
-S3_BUCKET=your_s3_bucket_name
-```
-
 ##### Image classification (`class`)
 
 Used for image processing and metadata lookup:
@@ -195,7 +186,6 @@ Used for image processing and metadata lookup:
 ```env
 AWS_REGION=us-west-1
 S3_BUCKET=your_s3_bucket_name
-DYNAMODB_USER_TABLE=Users
 DYNAMODB_IMAGE_TABLE=ImageMetadata
 LAMBDA_TIME_GUARD_SECONDS=30
 ```
@@ -210,6 +200,7 @@ S3_BUCKET=your_s3_bucket_name
 DYNAMODB_IMAGE_TABLE=ImageMetadata
 DYNAMODB_ZIP_JOBS_TABLE=ZipJobs
 SQS_IMAGE_PROCESSING_URL=your_image_processing_queue_url
+LAMBDA_TIME_GUARD_SECONDS=30
 ```
 
 ##### ZIP download processing (`download`)
@@ -220,15 +211,9 @@ Used for packaging selected images into a ZIP file:
 AWS_REGION=us-west-1
 S3_BUCKET=your_s3_bucket_name
 DYNAMODB_IMAGE_TABLE=ImageMetadata
+DYNAMODB_USER_TABLE=Users
 DYNAMODB_ZIP_JOBS_TABLE=ZipJobs
-```
-
-##### Test function (`test`)
-
-This function is intended for development or debugging.
-
-```env
-
+LAMBDA_TIME_GUARD_SECONDS=30
 ```
 
 ### 4. External Dependencies
