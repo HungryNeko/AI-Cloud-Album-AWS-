@@ -1,7 +1,7 @@
 data/mini-imagenet-test/
 data/mini-imagenet-test.tar
 **/**/*.pyc
-lambda/class_lambda.zip
+# lambda/class_lambda.zip
 lambda/test_lambda.zip
 lambda/class_package_build*/
 lambda/_pip_tmp*/

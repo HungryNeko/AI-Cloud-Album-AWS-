@@ -118,8 +118,8 @@ Note that different Lambda functions may require different environment variables
 
 ##### **Deployment**
 
-- The `upload`, `download`, and `test` functions can be directly packaged and uploaded to AWS Lambda using Python 3.14.
-- The `class` function requires additional machine learning dependencies (ONNX) and must be packaged separately and uploaded via Amazon S3.
+- The `upload`, `download`, and `test` functions can be copy to AWS Lambda using Python 3.14.
+- The `class` "lambda\class_lambda.zip"(this file only) needs to upload through AWS S3 and click "upload" from lambda.
 
 Each Lambda function should be connected to its corresponding SQS queue based on the system workflow.
 
